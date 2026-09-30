@@ -73,21 +73,21 @@ function baseGeometry(){
   return {cx:cx,cy:cy,left:cx-w/2,right:cx+w/2,top:cy-h/2,bottom:cy+h/2,w:w,h:h};
 }
 function getBuildPlots(){
-  const b=baseGeometry(),u=Math.min(b.w/11.2,b.h/7.4);
+  const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
   return [
-    {id:"hq",x:b.cx,y:b.cy+.05*u,fixed:"command",scale:1.55},
-    {id:"habitat",x:b.cx-3.55*u,y:b.cy-.75*u,fixed:"habitat",scale:1.12},
-    {id:"greenhouse",x:b.cx-3.65*u,y:b.cy-2.35*u,fixed:"greenhouse",scale:1.0},
-    {id:"solar",x:b.cx+3.55*u,y:b.cy-2.25*u,fixed:"solar",scale:1.06},
-    {id:"oxygen",x:b.cx+3.65*u,y:b.cy-.65*u,fixed:"oxygen",scale:1.0},
-    {id:"water",x:b.cx+3.45*u,y:b.cy+1.0*u,fixed:"water",scale:1.0},
-    {id:"storage",x:b.cx-3.55*u,y:b.cy+1.45*u,fixed:"storage",scale:.98},
-    {id:"garage",x:b.cx+1.95*u,y:b.cy+1.95*u,fixed:"roverGarage",scale:1.05},
-    {id:"plotA",x:b.cx-1.7*u,y:b.cy-2.0*u,scale:.96},
-    {id:"plotB",x:b.cx+1.55*u,y:b.cy-1.95*u,scale:.96},
-    {id:"plotC",x:b.cx-1.65*u,y:b.cy+1.95*u,scale:.96},
-    {id:"plotD",x:b.cx+3.9*u,y:b.cy+2.15*u,scale:.9},
-    {id:"plotE",x:b.cx-4.05*u,y:b.cy+2.55*u,scale:.9}
+    {id:"hq",x:b.cx,y:b.cy,fixed:"command",scale:1.6},
+    {id:"greenhouse",x:b.cx-3.45*u,y:b.cy-2.2*u,fixed:"greenhouse",scale:1.02},
+    {id:"solar",x:b.cx+3.45*u,y:b.cy-2.2*u,fixed:"solar",scale:1.05},
+    {id:"habitat",x:b.cx-3.55*u,y:b.cy-.6*u,fixed:"habitat",scale:1.12},
+    {id:"water",x:b.cx+3.5*u,y:b.cy-.55*u,fixed:"water",scale:1.02},
+    {id:"storage",x:b.cx-3.45*u,y:b.cy+1.55*u,fixed:"storage",scale:1.0},
+    {id:"garage",x:b.cx+2.2*u,y:b.cy+1.7*u,fixed:"roverGarage",scale:1.08},
+    {id:"oxygen",x:b.cx+3.55*u,y:b.cy+1.0*u,fixed:"oxygen",scale:1.0},
+    {id:"plotA",x:b.cx-1.75*u,y:b.cy-2.15*u,scale:.98},
+    {id:"plotB",x:b.cx+1.7*u,y:b.cy-2.15*u,scale:.98},
+    {id:"plotC",x:b.cx-1.75*u,y:b.cy+1.95*u,scale:.98},
+    {id:"plotD",x:b.cx+3.95*u,y:b.cy+2.15*u,scale:.92},
+    {id:"plotE",x:b.cx-4.05*u,y:b.cy+2.45*u,scale:.92}
   ];
 }
 function syncBuildingsToPlots(){
@@ -163,98 +163,138 @@ function drawRotated(file,cx,cy,maxW,maxH,angle){
   ctx.save();ctx.translate(cx,cy);ctx.rotate(angle);ctx.drawImage(im,-w/2,-h/2,w,h);ctx.restore();
 }
 function drawBaseInfrastructure(){
-  const b=baseGeometry(),u=Math.min(b.w/11.2,b.h/7.4);
+  const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
   ctx.save();
 
-  ctx.fillStyle="#aa9e8a";ctx.strokeStyle="#57524a";ctx.lineWidth=4;
-  ctx.beginPath();ctx.roundRect(b.left+u*.16,b.top+u*.12,b.w-u*.32,b.h-u*.24,22);ctx.fill();ctx.stroke();
+  ctx.fillStyle="#aaa08e";
+  ctx.strokeStyle="#504b43";
+  ctx.lineWidth=4;
+  ctx.beginPath();
+  ctx.roundRect(b.left+u*.15,b.top+u*.12,b.w-u*.30,b.h-u*.22,22);
+  ctx.fill();ctx.stroke();
 
-  ctx.fillStyle="rgba(78,111,60,.58)";
-  [[-4.35,-2.95,2.65,1.4],[1.95,-2.95,2.7,1.42],[-4.3,.72,2.55,1.82],[2.0,.72,2.7,1.82]].forEach(function(r){
-    ctx.beginPath();ctx.roundRect(b.cx+r[0]*u,b.cy+r[1]*u,r[2]*u,r[3]*u,18);ctx.fill();
+  // landscaped city blocks
+  ctx.fillStyle="rgba(77,112,62,.62)";
+  [
+    [-4.5,-2.8,2.8,1.35],[1.75,-2.8,2.85,1.35],
+    [-4.5,.55,2.75,1.8],[1.85,.55,2.85,1.9]
+  ].forEach(function(r){
+    ctx.beginPath();
+    ctx.roundRect(b.cx+r[0]*u,b.cy+r[1]*u,r[2]*u,r[3]*u,18);
+    ctx.fill();
   });
 
-  const rs=baseArt("road_straight.png",null),rc=baseArt("road_cross.png",null),corner=baseArt("road_corner.png",null);
-  if(rs&&images[rs]){
-    const roadW=u*1.55, roadH=u*.88, step=u*1.12;
-    for(let i=-4;i<=4;i++)drawImageCentered(rs,b.cx+i*step,b.cy,roadW,roadH);
-    for(let i=-2;i<=2;i++)drawRotated(rs,b.cx,b.cy+i*step,roadW,roadH,Math.PI/2);
-    if(rc&&images[rc])drawImageCentered(rc,b.cx,b.cy,u*1.7,u*1.7);
+  const rs=baseArt("road_straight.png",null);
+  const rc=baseArt("road_cross.png",null);
+  const corner=baseArt("road_corner.png",null);
+  const roadW=u*1.8, roadH=u*1.0, step=u*1.18;
 
-    for(let i=-3;i<=-1;i++){
-      drawImageCentered(rs,b.cx+i*step,b.cy-2.15*u,roadW*.94,roadH*.94);
-      drawImageCentered(rs,b.cx+i*step,b.cy+2.05*u,roadW*.94,roadH*.94);
+  if(rs&&images[rs]){
+    // main horizontal road
+    for(let i=-4;i<=4;i++) drawImageCentered(rs,b.cx+i*step,b.cy,roadW,roadH);
+
+    // main vertical road
+    for(let i=-2;i<=2;i++) drawRotated(rs,b.cx,b.cy+i*step,roadW,roadH,Math.PI/2);
+
+    // upper loop
+    for(let i=-3;i<=3;i++) drawImageCentered(rs,b.cx+i*step,b.cy-2.15*u,roadW*.95,roadH*.95);
+    // lower loop
+    for(let i=-3;i<=3;i++) drawImageCentered(rs,b.cx+i*step,b.cy+2.05*u,roadW*.95,roadH*.95);
+
+    // left and right connectors
+    for(let i=-1;i<=1;i++){
+      drawRotated(rs,b.cx-3.55*u,b.cy+i*step,roadW*.95,roadH*.95,Math.PI/2);
+      drawRotated(rs,b.cx+3.55*u,b.cy+i*step,roadW*.95,roadH*.95,Math.PI/2);
     }
-    for(let i=1;i<=3;i++){
-      drawImageCentered(rs,b.cx+i*step,b.cy-2.15*u,roadW*.94,roadH*.94);
-      drawImageCentered(rs,b.cx+i*step,b.cy+2.05*u,roadW*.94,roadH*.94);
-    }
+
+    if(rc&&images[rc]) drawImageCentered(rc,b.cx,b.cy,u*1.9,u*1.9);
 
     if(corner&&images[corner]){
-      const cs=u*1.25;
-      drawImageCentered(corner,b.cx-1.75*u,b.cy-2.15*u,cs,cs);
-      drawRotated(corner,b.cx+1.75*u,b.cy-2.15*u,cs,cs,Math.PI/2);
-      drawRotated(corner,b.cx-1.75*u,b.cy+2.05*u,cs,cs,-Math.PI/2);
-      drawRotated(corner,b.cx+1.75*u,b.cy+2.05*u,cs,cs,Math.PI);
+      const cs=u*1.4;
+      drawImageCentered(corner,b.cx-3.55*u,b.cy-2.15*u,cs,cs);
+      drawRotated(corner,b.cx+3.55*u,b.cy-2.15*u,cs,cs,Math.PI/2);
+      drawRotated(corner,b.cx-3.55*u,b.cy+2.05*u,cs,cs,-Math.PI/2);
+      drawRotated(corner,b.cx+3.55*u,b.cy+2.05*u,cs,cs,Math.PI);
     }
   }
 
+  // central civic plaza
   const plaza=images["P/Plazas/plaza.png"]?"P/Plazas/plaza.png":baseArt("fountain_plaza.png",null);
-  if(plaza&&images[plaza])drawImageCentered(plaza,b.cx,b.cy,u*3.0,u*2.25);
+  if(plaza&&images[plaza]) drawImageCentered(plaza,b.cx,b.cy,u*3.25,u*2.45);
 
-  const wall=baseArt("wall_straight.png","wall_2.png"),wc=baseArt("wall_corner.png","wall_4.png"),tower=baseArt("wall_tower.png",null),gate=baseArt("base_gate.png","base_gate.png");
+  // south entrance road to gate
+  if(rs&&images[rs]){
+    drawRotated(rs,b.cx,b.cy+3.0*u,roadW,roadH,Math.PI/2);
+    drawRotated(rs,b.cx,b.cy+3.9*u,roadW,roadH,Math.PI/2);
+  }
+
+  // coherent perimeter
+  const wall=baseArt("wall_straight.png","wall_2.png");
+  const wc=baseArt("wall_corner.png","wall_4.png");
+  const tower=baseArt("wall_tower.png",null);
+  const gate=baseArt("base_gate.png","base_gate.png");
   const top=b.top+u*.05,bottom=b.bottom-u*.10,left=b.left+u*.08,right=b.right-u*.08;
-  for(let x=left+u*.6;x<right-u*.4;x+=u*1.12)drawImageCentered(wall,x,top,u*1.18,u*.68);
-  for(let x=left+u*.6;x<right-u*.4;x+=u*1.12){if(Math.abs(x-b.cx)>u*1.45)drawImageCentered(wall,x,bottom,u*1.18,u*.68)}
-  for(let y=top+u*.8;y<bottom-u*.45;y+=u*1.0){
-    drawRotated(wall,left,y,u*1.18,u*.68,Math.PI/2);
-    drawRotated(wall,right,y,u*1.18,u*.68,Math.PI/2);
+
+  for(let x=left+u*.62;x<right-u*.45;x+=u*1.12) drawImageCentered(wall,x,top,u*1.2,u*.7);
+  for(let x=left+u*.62;x<right-u*.45;x+=u*1.12){
+    if(Math.abs(x-b.cx)>u*1.65) drawImageCentered(wall,x,bottom,u*1.2,u*.7);
+  }
+  for(let y=top+u*.82;y<bottom-u*.45;y+=u*1.0){
+    drawRotated(wall,left,y,u*1.2,u*.7,Math.PI/2);
+    drawRotated(wall,right,y,u*1.2,u*.7,Math.PI/2);
   }
   if(wc&&images[wc]){
-    const cs=u*1.15;
+    const cs=u*1.2;
     drawImageCentered(wc,left,top,cs,cs);
     drawRotated(wc,right,top,cs,cs,Math.PI/2);
     drawRotated(wc,left,bottom,cs,cs,-Math.PI/2);
     drawRotated(wc,right,bottom,cs,cs,Math.PI);
   }
   if(tower&&images[tower]){
-    drawImageCentered(tower,left+u*.28,top+u*.4,u*.95,u*1.4);
-    drawImageCentered(tower,right-u*.28,top+u*.4,u*.95,u*1.4);
+    drawImageCentered(tower,left+u*.3,top+u*.42,u*1.0,u*1.5);
+    drawImageCentered(tower,right-u*.3,top+u*.42,u*1.0,u*1.5);
   }
-  drawImageCentered(gate,b.cx,bottom+u*.18,u*2.85,u*1.5);
+  drawImageCentered(gate,b.cx,bottom+u*.18,u*3.0,u*1.55);
 
+  // build pads snap directly beside roads
   getBuildPlots().forEach(function(p){
     if(p.id==="hq"||buildings.some(function(bb){return bb.plotId===p.id}))return;
     const pad=images["P/Plazas/build_pad.png"]?"P/Plazas/build_pad.png":baseArt("build_pad.png",null);
-    if(pad&&images[pad])drawImageCentered(pad,p.x,p.y,u*1.3,u*.98);
-    ctx.fillStyle="rgba(40,38,34,.72)";ctx.font="bold 10px Arial";ctx.textAlign="center";ctx.fillText("BUILD",p.x,p.y+4);
+    if(pad&&images[pad]) drawImageCentered(pad,p.x,p.y,u*1.45,u*1.08);
+    ctx.fillStyle="rgba(38,36,32,.78)";
+    ctx.font="bold 10px Arial";
+    ctx.textAlign="center";
+    ctx.fillText("BUILD",p.x,p.y+4);
   });
 
   const landing=images["P/Plazas/landing_pad.png"]?"P/Plazas/landing_pad.png":null;
   const parking=images["P/Plazas/parking_pad.png"]?"P/Plazas/parking_pad.png":null;
-  if(landing)drawImageCentered(landing,b.cx-4.2*u,b.cy+2.65*u,u*2.2,u*1.55);
-  if(parking)drawImageCentered(parking,b.cx+3.05*u,b.cy+2.35*u,u*1.9,u*1.35);
+  if(landing) drawImageCentered(landing,b.cx-4.1*u,b.cy+2.6*u,u*2.35,u*1.7);
+  if(parking) drawImageCentered(parking,b.cx+3.15*u,b.cy+2.45*u,u*2.05,u*1.45);
 
   ctx.restore();
 }
 function drawProps(){
-  const b=baseGeometry(),u=Math.min(b.w/11.2,b.h/7.4);
+  const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
   const planter=images["P/Decor/planter.png"]?"P/Decor/planter.png":baseArt("garden_planter.png","planter_1.png");
   const fountain=images["P/Decor/fountain.png"]?"P/Decor/fountain.png":null;
   const light=images["P/Decor/light.png"]?"P/Decor/light.png":null;
   const crate=images["P/Decor/crate.png"]?"P/Decor/crate.png":baseArt("cargo_crates.png","resource_crate.png");
   const terminal=images["P/Decor/terminal.png"]?"P/Decor/terminal.png":"terminal.png";
 
-  [[-1.45,-.9],[1.45,-.9],[-1.45,.9],[1.45,.9],[-.8,-2.85],[.8,-2.85],[-.8,2.65],[.8,2.65],[-3.0,-.05],[3.0,-.05]].forEach(function(p){
-    drawImageCentered(planter,b.cx+p[0]*u,b.cy+p[1]*u,u*.7,u*.7);
+  [[-1.55,-.9],[1.55,-.9],[-1.55,.9],[1.55,.9],[-3.0,-1.3],[3.0,-1.3],[-3.0,1.25],[3.0,1.25]].forEach(function(p){
+    drawImageCentered(planter,b.cx+p[0]*u,b.cy+p[1]*u,u*.72,u*.72);
   });
-  if(fountain)drawImageCentered(fountain,b.cx,b.cy+u*.78,u*1.15,u*1.15);
-  [[-2.35,-.2],[2.35,-.2],[-2.35,1.0],[2.35,1.0],[-.95,-3.0],[.95,-3.0],[-3.8,1.9],[3.8,1.9]].forEach(function(p){
-    if(light)drawImageCentered(light,b.cx+p[0]*u,b.cy+p[1]*u,u*.48,u*.92);
+
+  if(fountain) drawImageCentered(fountain,b.cx,b.cy+u*.82,u*1.2,u*1.2);
+
+  [[-2.4,-.2],[2.4,-.2],[-2.4,1.05],[2.4,1.05],[-3.6,-1.95],[3.6,-1.95],[-3.6,1.95],[3.6,1.95]].forEach(function(p){
+    if(light) drawImageCentered(light,b.cx+p[0]*u,b.cy+p[1]*u,u*.5,u*.95);
   });
-  drawImageCentered(crate,b.cx-4.15*u,b.cy+2.25*u,u*.85,u*.68);
-  drawImageCentered(crate,b.cx+4.0*u,b.cy+2.10*u,u*.85,u*.68);
-  drawImageCentered(terminal,b.cx+1.0*u,b.cy+.62*u,u*.58,u*.78);
+
+  drawImageCentered(crate,b.cx-4.0*u,b.cy+2.15*u,u*.85,u*.7);
+  drawImageCentered(crate,b.cx+4.0*u,b.cy+2.1*u,u*.85,u*.7);
+  drawImageCentered(terminal,b.cx+1.0*u,b.cy+.62*u,u*.6,u*.82);
 }
 function drawBuildings(){
   const plots=getBuildPlots();
