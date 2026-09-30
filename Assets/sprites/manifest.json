@@ -1,294 +1,294 @@
 {
-  "terrain_1_1": [
-    105,
-    115
-  ],
-  "terrain_1_2": [
-    105,
-    115
-  ],
-  "terrain_1_3": [
-    105,
-    115
-  ],
-  "terrain_1_4": [
-    105,
-    115
-  ],
-  "terrain_1_5": [
-    110,
-    115
-  ],
-  "terrain_2_1": [
-    105,
-    110
-  ],
-  "terrain_2_2": [
-    105,
-    110
-  ],
-  "terrain_2_3": [
-    105,
-    110
-  ],
-  "terrain_2_4": [
-    105,
-    110
-  ],
-  "terrain_2_5": [
-    110,
-    110
-  ],
-  "terrain_3_1": [
-    105,
-    110
-  ],
-  "terrain_3_2": [
-    105,
-    110
-  ],
-  "terrain_3_3": [
-    105,
-    110
-  ],
-  "terrain_3_4": [
-    105,
-    110
-  ],
-  "terrain_3_5": [
-    110,
-    110
-  ],
-  "iron_ore": [
-    150,
-    149
-  ],
-  "ice_deposit": [
-    150,
-    149
-  ],
-  "regolith": [
-    175,
-    158
-  ],
-  "rare_minerals": [
-    160,
-    155
-  ],
-  "rock_small_1": [
-    68,
-    83
-  ],
-  "rock_small_2": [
-    85,
-    90
-  ],
-  "rock_spire": [
-    140,
-    170
-  ],
-  "plant_rock_cluster": [
-    145,
-    115
-  ],
-  "plants_cluster": [
-    115,
-    115
-  ],
-  "crater_small": [
-    120,
-    120
-  ],
-  "dune_small": [
-    124,
-    75
-  ],
-  "ridge_1": [
-    104,
-    69
-  ],
-  "ridge_2": [
-    140,
-    68
-  ],
-  "crater_large": [
-    150,
-    115
-  ],
-  "rocks_mid": [
-    120,
-    115
-  ],
-  "spire_cluster": [
-    162,
-    145
-  ],
-  "habitat": [
-    225,
-    175
-  ],
-  "miner": [
-    165,
-    180
-  ],
-  "solar_panel": [
-    190,
-    180
-  ],
-  "oxygen_plant": [
-    199,
-    179
-  ],
-  "water_extractor": [
-    175,
-    167
-  ],
-  "storage": [
-    190,
-    180
-  ],
-  "rocket_export": [
-    300,
-    295
-  ],
-  "habitat_small": [
-    183,
-    160
-  ],
-  "life_support_tower": [
-    145,
-    160
-  ],
-  "solar_array_large": [
-    248,
-    160
-  ],
-  "tank_station_1": [
-    230,
-    155
-  ],
-  "tank_station_2": [
-    185,
-    155
-  ],
-  "storage_large": [
-    165,
-    143
-  ],
-  "colonist_1": [
-    60,
-    115
-  ],
-  "colonist_2": [
-    60,
-    116
-  ],
-  "colonist_3": [
-    60,
-    115
-  ],
-  "colonist_4": [
+  "colonist_4.png": [
     65,
-    116
+    94
   ],
-  "colonist_5": [
-    70,
+  "barrel.png": [
+    55,
+    94
+  ],
+  "ui_health_bars.png": [
+    146,
+    104
+  ],
+  "crater_large.png": [
+    150,
+    95
+  ],
+  "life_support_tower.png": [
+    144,
+    147
+  ],
+  "resource_crate.png": [
+    76,
+    87
+  ],
+  "plants_cluster.png": [
+    115,
+    84
+  ],
+  "colonist_1.png": [
+    51,
+    91
+  ],
+  "dune_small.png": [
+    122,
+    73
+  ],
+  "plant_rock_cluster.png": [
+    145,
+    115
+  ],
+  "terrain_1_3.png": [
+    104,
+    107
+  ],
+  "terrain_1_2.png": [
+    102,
+    107
+  ],
+  "solar_array_large.png": [
+    226,
+    121
+  ],
+  "rock_small_2.png": [
+    69,
+    60
+  ],
+  "terrain_3_4.png": [
+    101,
     108
   ],
-  "rover": [
-    200,
-    140
+  "colonist_3.png": [
+    60,
+    94
   ],
-  "drone_large": [
-    100,
-    129
+  "terrain_3_3.png": [
+    101,
+    108
   ],
-  "drone_small": [
-    75,
-    130
-  ],
-  "robot_worker": [
-    75,
-    140
-  ],
-  "resource_crate": [
-    85,
-    110
-  ],
-  "barrel": [
-    80,
-    112
-  ],
-  "supply_box": [
-    130,
-    111
-  ],
-  "satellite_dish": [
-    125,
-    185
-  ],
-  "wind_sensor": [
-    75,
-    195
-  ],
-  "radio_tower": [
-    80,
-    191
-  ],
-  "lamp_post": [
-    85,
-    205
-  ],
-  "flag": [
-    143,
-    120
-  ],
-  "terminal": [
-    125,
+  "ui_build_button.png": [
+    118,
     125
   ],
-  "ui_resources_panel": [
-    490,
-    145
-  ],
-  "ui_build_button": [
-    120,
-    125
-  ],
-  "ui_upgrade_button": [
+  "ui_upgrade_button.png": [
     110,
     125
   ],
-  "ui_sell_button": [
-    115,
-    125
+  "oxygen_plant.png": [
+    181,
+    157
   ],
-  "ui_demolish_button": [
-    115,
-    125
+  "lamp_post.png": [
+    61,
+    176
   ],
-  "ui_settings_button": [
-    70,
-    77
+  "tank_station_2.png": [
+    179,
+    131
   ],
-  "ui_pause_button": [
+  "ui_selection.png": [
+    189,
+    103
+  ],
+  "ui_pause_button.png": [
     75,
-    75
+    64
   ],
-  "ui_fast_button": [
-    80,
-    68
+  "ui_fast_button.png": [
+    79,
+    61
   ],
-  "ui_menu_button": [
-    70,
-    70
+  "ui_demolish_button.png": [
+    115,
+    125
   ],
-  "ui_health_bars": [
+  "spire_cluster.png": [
+    159,
+    145
+  ],
+  "storage.png": [
+    186,
+    175
+  ],
+  "terrain_3_1.png": [
+    102,
+    108
+  ],
+  "rare_minerals.png": [
     160,
-    150
+    154
   ],
-  "ui_selection": [
-    207,
-    155
+  "rock_spire.png": [
+    138,
+    142
+  ],
+  "ridge_1.png": [
+    95,
+    65
+  ],
+  "ice_deposit.png": [
+    150,
+    146
+  ],
+  "miner.png": [
+    158,
+    165
+  ],
+  "satellite_dish.png": [
+    82,
+    142
+  ],
+  "robot_worker.png": [
+    68,
+    95
+  ],
+  "water_extractor.png": [
+    166,
+    161
+  ],
+  "colonist_2.png": [
+    44,
+    94
+  ],
+  "radio_tower.png": [
+    72,
+    189
+  ],
+  "terrain_2_1.png": [
+    102,
+    108
+  ],
+  "terrain_2_2.png": [
+    102,
+    109
+  ],
+  "storage_large.png": [
+    165,
+    102
+  ],
+  "ui_menu_button.png": [
+    68,
+    64
+  ],
+  "terrain_3_2.png": [
+    102,
+    108
+  ],
+  "terrain_1_4.png": [
+    102,
+    107
+  ],
+  "tank_station_1.png": [
+    215,
+    138
+  ],
+  "terrain_1_1.png": [
+    102,
+    107
+  ],
+  "solar_panel.png": [
+    178,
+    144
+  ],
+  "rocket_export.png": [
+    267,
+    281
+  ],
+  "terrain_3_5.png": [
+    105,
+    108
+  ],
+  "ui_resources_panel.png": [
+    489,
+    132
+  ],
+  "ui_settings_button.png": [
+    70,
+    66
+  ],
+  "terrain_1_5.png": [
+    106,
+    107
+  ],
+  "wind_sensor.png": [
+    63,
+    160
+  ],
+  "iron_ore.png": [
+    142,
+    147
+  ],
+  "rover.png": [
+    182,
+    110
+  ],
+  "rock_small_1.png": [
+    65,
+    56
+  ],
+  "habitat.png": [
+    224,
+    141
+  ],
+  "regolith.png": [
+    175,
+    156
+  ],
+  "rocks_mid.png": [
+    120,
+    93
+  ],
+  "crater_small.png": [
+    118,
+    40
+  ],
+  "ridge_2.png": [
+    140,
+    66
+  ],
+  "supply_box.png": [
+    130,
+    93
+  ],
+  "ui_sell_button.png": [
+    115,
+    125
+  ],
+  "terminal.png": [
+    116,
+    125
+  ],
+  "drone_large.png": [
+    100,
+    93
+  ],
+  "terrain_2_5.png": [
+    106,
+    108
+  ],
+  "flag.png": [
+    141,
+    105
+  ],
+  "habitat_small.png": [
+    179,
+    120
+  ],
+  "terrain_2_3.png": [
+    102,
+    108
+  ],
+  "drone_small.png": [
+    75,
+    102
+  ],
+  "colonist_5.png": [
+    70,
+    95
+  ],
+  "terrain_2_4.png": [
+    102,
+    108
   ]
 }
