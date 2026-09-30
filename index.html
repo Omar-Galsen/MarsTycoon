@@ -1,64 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <title>Mars Survival Tycoon</title>
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Mars Survival Tycoon</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div id="topbar">
-        <div class="title-block">
-            <div class="title">MARS SURVIVAL TYCOON</div>
-            <div class="subtitle">Build • Survive • Automate • Export</div>
-        </div>
-
-        <div id="resources">
-            <div class="resource"><span>💰</span><b id="credits">1200</b></div>
-            <div class="resource"><span>⛏</span><b id="iron">0</b></div>
-            <div class="resource"><span>💧</span><b id="water">60</b></div>
-            <div class="resource"><span>🫁</span><b id="oxygen">100</b></div>
-            <div class="resource"><span>⚡</span><b id="power">60</b></div>
-            <div class="resource"><span>👨‍🚀</span><b id="population">3</b></div>
-        </div>
+  <canvas id="game"></canvas>
+  <header id="topbar">
+    <div class="commander-card">
+      <div class="avatar-ring">M</div>
+      <div>
+        <div class="small-label">MARS COMMAND</div>
+        <div class="commander-row"><strong id="hqLabel">Command Hub Lv.1</strong><span class="power">⚡ <b id="colonyPowerScore">1,250</b></span></div>
+      </div>
     </div>
-
-    <div id="buildPanel">
-        <div id="buildHeader">BUILD</div>
-        <div id="buildMenu"></div>
+    <div id="resources">
+      <div class="resource"><span>💰</span><b id="credits">1500</b></div>
+      <div class="resource"><span>⛏</span><b id="iron">80</b></div>
+      <div class="resource"><span>💧</span><b id="water">80</b></div>
+      <div class="resource"><span>🫁</span><b id="oxygen">110</b></div>
+      <div class="resource"><span>⚡</span><b id="power">80</b></div>
+      <div class="resource"><span>👨‍🚀</span><b id="population">3</b></div>
     </div>
-
-    <div id="actionBar">
-        <button class="image-action" id="sellBtn" title="Sell 10 iron">
-            <img src="Assets/sprites/ui_sell_button.png" alt="Sell">
-        </button>
-        <button class="image-action" id="demolishBtn" title="Demolish selected building">
-            <img src="Assets/sprites/ui_demolish_button.png" alt="Demolish">
-        </button>
-        <button class="image-action" id="pauseBtn" title="Pause">
-            <img src="Assets/sprites/ui_pause_button.png" alt="Pause">
-        </button>
-        <button class="image-action" id="speedBtn" title="Fast speed">
-            <img src="Assets/sprites/ui_fast_button.png" alt="Fast">
-        </button>
-        <button class="image-action" id="menuBtn" title="Sprite catalog">
-            <img src="Assets/sprites/ui_menu_button.png" alt="Menu">
-        </button>
+  </header>
+  <aside id="missionPanel"><div class="mission-title">COLONY GOALS</div><div id="missionList"></div></aside>
+  <section id="selectedPanel" class="hidden">
+    <button id="closeSelected" class="close-btn">×</button>
+    <div class="selected-hero"><img id="selectedSprite" src="" alt=""><div><div id="selectedName" class="selected-name">Building</div><div class="level-pill">LEVEL <span id="selectedLevel">1</span></div></div></div>
+    <div class="progress-row"><span>Upgrade progress</span><b id="selectedProgressText">0 / 10</b></div>
+    <div class="progress"><div id="selectedProgressBar"></div></div>
+    <div class="stats-grid">
+      <div><span>Production</span><b id="statProduction">—</b></div>
+      <div><span>Power</span><b id="statPower">—</b></div>
+      <div><span>Capacity</span><b id="statCapacity">—</b></div>
+      <div><span>Colony Power</span><b id="statScore">—</b></div>
     </div>
-
-    <canvas id="game"></canvas>
-
-    <div id="status">Loading Mars colony assets…</div>
-
-    <div id="catalog" class="hidden">
-        <div class="catalog-card">
-            <button id="closeCatalog">×</button>
-            <h2>Colony Sprite Catalog</h2>
-            <p>Every game sprite currently available in the repository.</p>
-            <div id="catalogGrid"></div>
-        </div>
+    <div id="upgradeRequirements" class="requirements"></div>
+    <button id="upgradeBtn" class="upgrade-btn"><img src="Assets/sprites/ui_upgrade_button.png" alt=""><div><strong>UPGRADE</strong><span id="upgradeCostText">$0 + 0 iron</span></div></button>
+  </section>
+  <section id="buildPanel">
+    <div class="panel-tabs">
+      <button class="tab active" data-tab="economy">ECONOMY</button>
+      <button class="tab" data-tab="life">LIFE SUPPORT</button>
+      <button class="tab" data-tab="utility">UTILITY</button>
+      <button class="tab" data-tab="decor">DECOR</button>
     </div>
-
-    <script src="js/game.js"></script>
+    <div id="buildMenu"></div>
+  </section>
+  <div id="actionBar">
+    <button class="image-action" id="sellBtn" title="Sell 10 iron"><img src="Assets/sprites/ui_sell_button.png" alt="Sell"></button>
+    <button class="image-action" id="demolishBtn" title="Demolish selected building"><img src="Assets/sprites/ui_demolish_button.png" alt="Demolish"></button>
+    <button class="image-action" id="pauseBtn" title="Pause"><img src="Assets/sprites/ui_pause_button.png" alt="Pause"></button>
+    <button class="image-action" id="speedBtn" title="Fast speed"><img src="Assets/sprites/ui_fast_button.png" alt="Fast"></button>
+    <button class="image-action" id="menuBtn" title="Sprite catalog"><img src="Assets/sprites/ui_menu_button.png" alt="Menu"></button>
+  </div>
+  <div id="status">Loading Mars colony assets…</div>
+  <div id="catalog" class="hidden"><div class="catalog-card"><button id="closeCatalog">×</button><h2>Colony Sprite Catalog</h2><p>Every game sprite currently available in the repository.</p><div id="catalogGrid"></div></div></div>
+  <script src="js/game.js"></script>
 </body>
 </html>
