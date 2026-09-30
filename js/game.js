@@ -9,6 +9,8 @@ function loadSprites(){return Promise.all(spriteFiles.map(function(file){return 
 
 const colony={credits:1500,iron:80,water:80,oxygen:110,power:80,population:3,hqLevel:1};
 let selectedBuilding="miner",selectedPlaced=null,paused=false,speed=1,activeTab="economy",simulationAccumulator=0,lastTime=performance.now();
+let gameMode="base";
+const expedition={x:innerWidth*0.5,y:innerHeight*0.5,targetX:null,targetY:null,cargo:0,capacity:40,suitOxygen:100,harvestCooldown:0};
 
 const buildingData={
 habitat:{name:"Habitat",cost:300,sprite:"habitat.png",size:1.25,category:"life",unlock:1,baseProd:"Population +2",basePower:-1,capacity:4,score:120},
@@ -60,7 +62,7 @@ function updateUnits(dt){units.forEach(function(u){u.x+=u.vx*dt;u.y+=u.vy*dt;if(
 function occupiedAt(gx,gy){return buildings.findIndex(function(b){return b.x===gx&&b.y===gy})}
 
 function placeOrSelect(x,y){const gx=Math.floor(x/GRID)*GRID,gy=Math.floor(y/GRID)*GRID;if(gy<GRID||gy>innerHeight-GRID*1.4)return;const occupied=occupiedAt(gx,gy);if(occupied>=0){selectedPlaced=occupied;showSelectedPanel();statusEl.textContent=buildingData[buildings[occupied].type].name+" selected.";return}const d=buildingData[selectedBuilding];if(!d)return;if(colony.hqLevel<d.unlock){statusEl.textContent="Requires Command Hub Lv."+d.unlock+".";return}if(colony.credits<d.cost){statusEl.textContent="Not enough credits.";return}colony.credits-=d.cost;buildings.push({type:selectedBuilding,x:gx,y:gy,level:1});selectedPlaced=buildings.length-1;showSelectedPanel();updateHUD();updateMissions();statusEl.textContent=d.name+" constructed."}
-canvas.addEventListener("pointerdown",function(e){placeOrSelect(e.clientX,e.clientY)});
+canvas.addEventListener("pointerdown",function(e){if(gameMode==="base")placeOrSelect(e.clientX,e.clientY)});
 
 function showSelectedPanel(){const panel=document.getElementById("selectedPanel"),b=buildings[selectedPlaced];if(!b){panel.classList.add("hidden");return}const d=buildingData[b.type],c=upgradeCost(b),m=multiplier(b);panel.classList.remove("hidden");document.getElementById("selectedSprite").src=ASSET+d.sprite;document.getElementById("selectedName").textContent=d.name;document.getElementById("selectedLevel").textContent=b.level;document.getElementById("selectedProgressText").textContent=b.level+"/10";document.getElementById("selectedProgressBar").style.width=(b.level/10*100)+"%";document.getElementById("statProduction").textContent=d.baseProd+" x"+m.toFixed(2);document.getElementById("statPower").textContent=(d.basePower>=0?"+":"")+Math.round(d.basePower*m)+"/s";document.getElementById("statCapacity").textContent=Math.round(d.capacity*m)||"—";document.getElementById("statScore").textContent=buildingScore(b);document.getElementById("upgradeCostText").textContent=b.level>=10?"MAX LEVEL":"$"+c.credits+" + "+c.iron+" iron";const req=document.getElementById("upgradeRequirements");req.innerHTML=b.level>=10?'<span class="req-ok">Maximum building level reached.</span>':'<div class="'+(colony.credits>=c.credits?"req-ok":"req-bad")+'">Credits: '+Math.floor(colony.credits)+" / "+c.credits+'</div><div class="'+(colony.iron>=c.iron?"req-ok":"req-bad")+'">Iron: '+Math.floor(colony.iron)+" / "+c.iron+'</div><div class="req-ok">Command Hub: Lv.'+colony.hqLevel+"</div>";document.getElementById("upgradeBtn").disabled=!canUpgrade(b)}
 function hideSelectedPanel(){document.getElementById("selectedPanel").classList.add("hidden")}
@@ -80,7 +82,79 @@ document.getElementById("speedBtn").onclick=function(){speed=speed===1?2:1;statu
 document.getElementById("menuBtn").onclick=function(){document.getElementById("catalog").classList.remove("hidden")};
 document.getElementById("closeCatalog").onclick=function(){document.getElementById("catalog").classList.add("hidden")};
 
-function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(!paused){updateUnits(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
+function setMode(mode){
+  gameMode=mode;
+  document.body.classList.toggle("outside-mode",mode==="outside");
+  document.getElementById("baseModeBtn").classList.toggle("active",mode==="base");
+  document.getElementById("outsideModeBtn").classList.toggle("active",mode==="outside");
+  document.getElementById("expeditionPanel").classList.toggle("hidden",mode!=="outside");
+  if(mode==="outside"){
+    selectedPlaced=null;hideSelectedPanel();
+    expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;
+    statusEl.textContent="Tap the terrain to move. Approach ore deposits to collect them.";
+  }else{
+    depositCargo();
+    statusEl.textContent="Back at the colony base.";
+  }
+  updateExpeditionHUD();
+}
+document.getElementById("baseModeBtn").onclick=function(){setMode("base")};
+document.getElementById("outsideModeBtn").onclick=function(){setMode("outside")};
+document.getElementById("returnBaseBtn").onclick=function(){setMode("base")};
+
+const outsideNodes=[
+  {type:"iron",sprite:"iron_ore.png",x:.18,y:.28,amount:22,active:true},
+  {type:"iron",sprite:"iron_ore.png",x:.78,y:.68,amount:26,active:true},
+  {type:"ice",sprite:"ice_deposit.png",x:.72,y:.24,amount:18,active:true},
+  {type:"regolith",sprite:"regolith.png",x:.28,y:.72,amount:16,active:true},
+  {type:"rare",sprite:"rare_minerals.png",x:.52,y:.20,amount:10,active:true}
+];
+function resetOutsideNodes(){outsideNodes.forEach(function(n){n.active=true})}
+function updateExpeditionHUD(){
+  document.getElementById("cargoText").textContent=Math.floor(expedition.cargo)+" / "+expedition.capacity;
+  document.getElementById("cargoBar").style.width=Math.min(100,expedition.cargo/expedition.capacity*100)+"%";
+  document.getElementById("suitOxygenText").textContent=Math.max(0,Math.floor(expedition.suitOxygen))+"%";
+  document.getElementById("suitOxygenBar").style.width=Math.max(0,expedition.suitOxygen)+"%";
+}
+function depositCargo(){
+  if(expedition.cargo>0){colony.iron+=expedition.cargo;statusEl.textContent="Returned with "+Math.floor(expedition.cargo)+" ore.";expedition.cargo=0}
+  expedition.suitOxygen=100;resetOutsideNodes();updateHUD();updateExpeditionHUD();
+}
+function drawOutsideTerrain(){
+  ctx.fillStyle="#7f3524";ctx.fillRect(0,0,innerWidth,innerHeight);
+  const tile=images["terrain_2_3.png"]||images["terrain_1_3.png"];
+  if(tile){for(let y=0;y<innerHeight;y+=GRID)for(let x=0;x<innerWidth;x+=GRID)ctx.drawImage(tile,x,y,GRID+1,GRID+1)}
+  worldProps.slice(0,14).forEach(function(p,i){drawImageCentered(p.sprite,(p.x*1.3+i*37)%innerWidth,(p.y*1.1+i*23)%innerHeight,GRID*.5,GRID*.5)});
+  outsideNodes.forEach(function(n){if(n.active)drawImageCentered(n.sprite,n.x*innerWidth,n.y*innerHeight,GRID*1.25,GRID*1.25)});
+  drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);
+}
+function updateOutside(dt){
+  expedition.suitOxygen=Math.max(0,expedition.suitOxygen-dt*.75);
+  if(expedition.suitOxygen<=0){statusEl.textContent="Suit oxygen depleted. Returning to base.";setMode("base");return}
+  if(expedition.targetX!=null){
+    const dx=expedition.targetX-expedition.x,dy=expedition.targetY-expedition.y,dist=Math.hypot(dx,dy),speedPx=120;
+    if(dist<4){expedition.targetX=null;expedition.targetY=null}
+    else{expedition.x+=dx/dist*speedPx*dt;expedition.y+=dy/dist*speedPx*dt}
+  }
+  if(expedition.harvestCooldown>0)expedition.harvestCooldown-=dt;
+  outsideNodes.forEach(function(n){
+    if(!n.active||expedition.harvestCooldown>0)return;
+    const nx=n.x*innerWidth,ny=n.y*innerHeight;
+    if(Math.hypot(expedition.x-nx,expedition.y-ny)<58){
+      const free=expedition.capacity-expedition.cargo;
+      if(free<=0){statusEl.textContent="Cargo full. Return to base.";return}
+      const take=Math.min(n.amount,free);expedition.cargo+=take;n.active=false;expedition.harvestCooldown=.5;
+      statusEl.textContent="Collected "+take+" "+(n.type==="ice"?"ice":"ore")+".";
+    }
+  });
+  updateExpeditionHUD();
+}
+const oldCanvasPointer=canvas.onpointerdown;
+canvas.addEventListener("pointerdown",function(e){
+  if(gameMode==="outside"){expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
+},true);
+
+function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",resizeCanvas);
-resizeCanvas();buildButtons();spriteCatalog();updateHUD();updateMissions();
+resizeCanvas();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop)});
