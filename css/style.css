@@ -48,3 +48,13 @@ body.layout-mode #status{bottom:108px}
 body.layout-mode #game{cursor:grab}
 body.layout-mode.dragging #game{cursor:grabbing}
 @media(max-width:800px){#layoutPanel{top:auto;bottom:115px;right:8px;width:min(285px,calc(100vw - 16px));#layoutOutput{height:100px}}}
+
+.fort-title{margin-top:9px;font-size:10px;font-weight:900;letter-spacing:.12em;color:#ffd174}
+#fortPalette{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px}
+.fort-tool,.fort-actions button{border:1px solid #5a6067;background:#252a30;color:#d5dade;border-radius:7px;padding:7px 5px;font-size:8px;font-weight:900;cursor:pointer}
+.fort-tool.active{background:#824522;border-color:#e1a25a;color:white;box-shadow:0 0 0 1px rgba(255,200,105,.35)}
+.fort-actions{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:5px;margin-top:6px}
+.fort-actions button{background:#4c2b20;border-color:#865237}
+#eraseFortBtn.active{background:#9b322c;border-color:#ef6a62}
+#fortStatus{margin-top:6px;padding:5px 7px;border-radius:6px;background:#171b1f;color:#c9cfd5;font-size:8px}
+body.layout-mode.fort-placement #game{cursor:crosshair}

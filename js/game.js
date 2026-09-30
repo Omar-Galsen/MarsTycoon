@@ -38,6 +38,8 @@ const colony={credits:1500,iron:80,water:80,oxygen:110,power:80,population:3,hqL
 let selectedBuilding="miner",selectedPlaced=null,paused=false,speed=1,activeTab="economy",simulationAccumulator=0,lastTime=performance.now();
 let gameMode="base";
 let layoutDragIndex=null,layoutDragOffsetX=0,layoutDragOffsetY=0;
+let fortTool="wall",fortRotation=0,fortErase=false;
+const fortPieces=[];
 const expedition={x:innerWidth*0.5,y:innerHeight*0.5,targetX:null,targetY:null,cargo:0,capacity:40,suitOxygen:100,harvestCooldown:0};
 
 const buildingData={
@@ -229,7 +231,8 @@ function drawBaseInfrastructure(){
     drawRotated(rs,b.cx,b.cy+3.9*u,roadW,roadH,Math.PI/2);
   }
 
-  // coherent perimeter
+  // coherent perimeter (automatic only until the player creates a custom fort)
+  if(fortPieces.length===0){
   const wall=baseArt("wall_straight.png","wall_2.png");
   const wc=baseArt("wall_corner.png","wall_4.png");
   const tower=baseArt("wall_tower.png",null);
@@ -256,6 +259,8 @@ function drawBaseInfrastructure(){
     drawImageCentered(tower,right-u*.3,top+u*.42,u*1.0,u*1.5);
   }
   drawImageCentered(gate,b.cx,bottom+u*.18,u*3.0,u*1.55);
+  }
+  if(fortPieces.length>0)drawCustomFort();
 
   // build pads snap directly beside roads
   getBuildPlots().forEach(function(p){
@@ -379,6 +384,7 @@ function placeOrSelect(x,y){
 }
 canvas.addEventListener("pointerdown",function(e){
   if(gameMode==="layout"){
+    if(fortErase||fortTool!=="none"){placeFortPiece(e.clientX,e.clientY);return}
     const hit=buildingAtPoint(e.clientX,e.clientY);
     if(hit>=0){
       layoutDragIndex=hit;
@@ -421,12 +427,71 @@ document.getElementById("speedBtn").onclick=function(){speed=speed===1?2:1;statu
 document.getElementById("menuBtn").onclick=function(){document.getElementById("catalog").classList.remove("hidden")};
 document.getElementById("closeCatalog").onclick=function(){document.getElementById("catalog").classList.add("hidden")};
 
+function fortSprite(type){
+  if(type==="wall")return images["P/Walls/wall_straight.png"]?"P/Walls/wall_straight.png":baseArt("wall_straight.png","wall_2.png");
+  if(type==="corner")return images["P/Walls/wall_corner.png"]?"P/Walls/wall_corner.png":baseArt("wall_corner.png","wall_4.png");
+  if(type==="tower")return images["P/Walls/wall_tower.png"]?"P/Walls/wall_tower.png":baseArt("wall_tower.png",null);
+  if(type==="gate")return images["P/Walls/gate.png"]?"P/Walls/gate.png":baseArt("base_gate.png","base_gate.png");
+  return null;
+}
+function fortSize(type){
+  const u=Math.min(baseGeometry().w/11.5,baseGeometry().h/7.6);
+  if(type==="tower")return {w:u*1.0,h:u*1.5};
+  if(type==="gate")return {w:u*2.2,h:u*1.25};
+  if(type==="corner")return {w:u*1.15,h:u*1.15};
+  return {w:u*1.2,h:u*.7};
+}
+function snapFortPoint(x,y){
+  const b=baseGeometry(),step=24;
+  return {x:Math.max(b.left-20,Math.min(b.right+20,Math.round(x/step)*step)),y:Math.max(b.top-20,Math.min(b.bottom+20,Math.round(y/step)*step))};
+}
+function drawCustomFort(){
+  fortPieces.forEach(function(p){
+    const file=fortSprite(p.type),s=fortSize(p.type);
+    if(file)drawRotated(file,p.x,p.y,s.w,s.h,p.rotation*Math.PI/180);
+  });
+}
+function fortPieceAt(x,y){
+  let found=-1,best=Infinity;
+  fortPieces.forEach(function(p,i){const d=Math.hypot(x-p.x,y-p.y);if(d<42&&d<best){best=d;found=i}});
+  return found;
+}
+function placeFortPiece(x,y){
+  if(fortErase){
+    const i=fortPieceAt(x,y);
+    if(i>=0){fortPieces.splice(i,1);refreshLayoutOutput();statusEl.textContent="Fort piece removed."}
+    else statusEl.textContent="Tap a fort piece to erase.";
+    return;
+  }
+  if(fortTool==="none")return false;
+  const p=snapFortPoint(x,y);
+  fortPieces.push({type:fortTool,x:p.x,y:p.y,rotation:fortRotation});
+  refreshLayoutOutput();
+  statusEl.textContent=fortTool+" placed.";
+  return true;
+}
+function refreshFortStatus(){
+  const label=document.getElementById("fortStatus");
+  if(label)label.textContent=(fortErase?"Erase mode":(fortTool==="none"?"Building drag mode":fortTool.charAt(0).toUpperCase()+fortTool.slice(1)+" selected • "+fortRotation+"°"));
+  document.body.classList.toggle("fort-placement",gameMode==="layout"&&(fortTool!=="none"||fortErase));
+}
+document.querySelectorAll(".fort-tool").forEach(function(btn){
+  btn.onclick=function(){
+    document.querySelectorAll(".fort-tool").forEach(function(b){b.classList.remove("active")});
+    btn.classList.add("active");fortTool=btn.dataset.fort;fortErase=false;document.getElementById("eraseFortBtn").classList.remove("active");refreshFortStatus();
+  };
+});
+document.getElementById("rotateFortBtn").onclick=function(){fortRotation=(fortRotation+90)%360;refreshFortStatus()};
+document.getElementById("eraseFortBtn").onclick=function(){fortErase=!fortErase;document.getElementById("eraseFortBtn").classList.toggle("active",fortErase);refreshFortStatus()};
+document.getElementById("clearFortBtn").onclick=function(){fortPieces.length=0;refreshLayoutOutput();statusEl.textContent="Custom fort cleared."};
+
 function exportLayoutData(){
   const b=baseGeometry();
   const data={
     version:1,
     canvas:{width:Math.round(innerWidth),height:Math.round(innerHeight)},
     base:{left:Math.round(b.left),top:Math.round(b.top),width:Math.round(b.w),height:Math.round(b.h)},
+    fort:fortPieces.map(function(p){return {type:p.type,x:Math.round(p.x),y:Math.round(p.y),nx:+((p.x-b.left)/b.w).toFixed(4),ny:+((p.y-b.top)/b.h).toFixed(4),rotation:p.rotation};}),
     buildings:buildings.map(function(x){
       const cx=x.x+GRID/2,cy=x.y+GRID/2;
       return {
@@ -468,7 +533,7 @@ function setMode(mode){
   document.getElementById("outsideModeBtn").classList.toggle("active",mode==="outside");
   document.getElementById("expeditionPanel").classList.toggle("hidden",mode!=="outside");
   document.getElementById("layoutPanel").classList.toggle("hidden",mode!=="layout");
-  if(mode==="layout"){paused=true;selectedPlaced=null;hideSelectedPanel();refreshLayoutOutput();statusEl.textContent="Layout mode: drag buildings, add more, then copy the JSON.";}
+  if(mode==="layout"){paused=true;selectedPlaced=null;hideSelectedPanel();refreshLayoutOutput();refreshFortStatus();statusEl.textContent="Layout mode: build the fort or switch to BUILDINGS to drag structures.";}
   else if(mode==="outside"){
     selectedPlaced=null;hideSelectedPanel();
     expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;
