@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Mars Survival Tycoon</title>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<div id="hud">
+    <h2>MARS COLONY</h2>
+
+    <div>💰 Credits: <span id="credits">1000</span></div>
+    <div>⛏ Iron: <span id="iron">0</span></div>
+    <div>💧 Water: <span id="water">50</span></div>
+    <div>🫁 Oxygen: <span id="oxygen">100</span></div>
+    <div>⚡ Power: <span id="power">50</span></div>
+</div>
+
+<div id="buildMenu">
+
+<button onclick="selectBuilding('miner')">
+⛏ Miner $200
+</button>
+
+<button onclick="selectBuilding('solar')">
+☀ Solar $150
+</button>
+
+<button onclick="selectBuilding('oxygen')">
+🫁 Oxygen $250
+</button>
+
+<button onclick="selectBuilding('water')">
+💧 Water Extractor $250
+</button>
+
+</div>
+
+<canvas id="game"></canvas>
+
+<div id="status">
+Select a building and tap the Mars surface.
+</div>
+
+<script src="js/game.js"></script>
+
+</body>
+</html>

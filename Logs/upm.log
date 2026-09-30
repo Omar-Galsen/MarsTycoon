@@ -1,0 +1,18 @@
+[2026-09-30T16:36:26.114Z][INFO] Command-line: 'C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.0f1\\Editor\\Data\\Resources\\PackageManager\\Server\\UnityPackageManager.exe' server -s 14772 --ipc-path Unity-Upm-14772 -l 2 --log-file C\:/Users/bassl/MarsTycoon/Logs/upm.log
+[2026-09-30T16:36:26.184Z][INFO] IPC server started (IPC path=Unity-Upm-14772).
+[2026-09-30T16:36:26.185Z][INFO] Hint: To connect to this UPM instance, launch Unity with the command-line parameter -upmIpcPath Upm-14772.
+[2026-09-30T16:36:37.636Z][INFO] project:list-packages <-- Request received
+params: {}
+[2026-09-30T16:36:37.640Z][INFO] project:list-packages --> 404 (4 ms)
+[2026-09-30T16:36:39.716Z][INFO] project:update-dependencies <-- Request received
+params: {}
+[2026-09-30T16:36:39.754Z][INFO] project:update-dependencies --> 200 (38 ms)
+[2026-09-30T16:36:39.790Z][INFO] project:resolve-packages <-- Request received
+params: {}
+[2026-09-30T16:36:40.098Z][INFO] Downloading package [com.unity.package-manager.metadata-6000.6@0.0.90] from registry 'https://packages.unity.com'
+[2026-09-30T16:36:40.559Z][INFO] Finished downloading package [com.unity.package-manager.metadata-6000.6@0.0.90] from registry 'https://packages.unity.com' (size: 11.5 kB, time: 460ms)
+[2026-09-30T16:36:44.305Z][INFO] project:resolve-packages --> 200 (4515 ms)
+[2026-09-30T16:36:56.649Z][INFO] project:list-packages <-- Request received
+params: {}
+[2026-09-30T16:36:56.765Z][INFO] project:list-packages --> 200 (117 ms)
+[2026-09-30T16:37:04.391Z][INFO] Shutting down UnityPackageManager.exe: parent process [14772] is no longer running.
