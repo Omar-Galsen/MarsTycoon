@@ -38,16 +38,43 @@ export:{name:"Rocket Export",cost:700,sprite:"rocket_export.png",size:1.65,categ
 };
 
 const buildings=[];
-function seedBaseLayout(){if(buildings.length)return;const cx=Math.floor(innerWidth/2/GRID)*GRID,cy=Math.floor((innerHeight*.48)/GRID)*GRID;buildings.push(
-{type:"command",x:cx-GRID/2,y:cy-GRID/2,level:1},
-{type:"habitat",x:cx-3*GRID,y:cy-GRID,level:1},
-{type:"greenhouse",x:cx-3*GRID,y:cy-3*GRID,level:1},
-{type:"solar",x:cx+2*GRID,y:cy-3*GRID,level:1},
-{type:"oxygen",x:cx+3*GRID,y:cy-GRID,level:1},
-{type:"water",x:cx+3*GRID,y:cy+GRID,level:1},
-{type:"storage",x:cx-3*GRID,y:cy+2*GRID,level:1},
-{type:"roverGarage",x:cx+2*GRID,y:cy+2*GRID,level:1}
-)}
+function baseGeometry(){
+  const w=Math.min(innerWidth*0.78,1120);
+  const h=Math.min(innerHeight*0.70,680);
+  const cx=innerWidth/2;
+  const cy=innerHeight*0.49;
+  return {cx:cx,cy:cy,left:cx-w/2,right:cx+w/2,top:cy-h/2,bottom:cy+h/2,w:w,h:h};
+}
+function getBuildPlots(){
+  const b=baseGeometry(),u=Math.min(b.w/10,b.h/7);
+  return [
+    {id:"hq",x:b.cx,y:b.cy-10,fixed:"command"},
+    {id:"habitat",x:b.cx-u*3.05,y:b.cy-u*.65,fixed:"habitat"},
+    {id:"greenhouse",x:b.cx-u*2.9,y:b.cy-u*2.35,fixed:"greenhouse"},
+    {id:"solar",x:b.cx+u*2.85,y:b.cy-u*2.35,fixed:"solar"},
+    {id:"oxygen",x:b.cx+u*3.15,y:b.cy-u*.65,fixed:"oxygen"},
+    {id:"water",x:b.cx+u*3.05,y:b.cy+u*1.05,fixed:"water"},
+    {id:"storage",x:b.cx-u*2.85,y:b.cy+u*1.55,fixed:"storage"},
+    {id:"garage",x:b.cx+u*1.65,y:b.cy+u*2.05,fixed:"roverGarage"},
+    {id:"plotA",x:b.cx-u*1.65,y:b.cy-u*2.05},
+    {id:"plotB",x:b.cx+u*1.45,y:b.cy-u*2.05},
+    {id:"plotC",x:b.cx-u*1.6,y:b.cy+u*2.0},
+    {id:"plotD",x:b.cx+u*3.0,y:b.cy+u*2.15}
+  ];
+}
+function syncBuildingsToPlots(){
+  const plots=getBuildPlots();
+  buildings.forEach(function(b){
+    const p=plots.find(function(q){return q.id===b.plotId});
+    if(p){b.x=p.x-GRID/2;b.y=p.y-GRID/2}
+  });
+}
+function seedBaseLayout(){
+  if(buildings.length){syncBuildingsToPlots();return}
+  getBuildPlots().forEach(function(p){
+    if(p.fixed)buildings.push({type:p.fixed,plotId:p.id,x:p.x-GRID/2,y:p.y-GRID/2,level:1});
+  });
+}
 const terrainTiles=["terrain_1_1.png","terrain_1_2.png","terrain_1_3.png","terrain_1_4.png","terrain_1_5.png","terrain_2_1.png","terrain_2_2.png","terrain_2_3.png","terrain_2_4.png","terrain_2_5.png","terrain_3_1.png","terrain_3_2.png","terrain_3_3.png","terrain_3_4.png","terrain_3_5.png"];
 const scenerySprites=["crater_large.png","crater_small.png","dune_small.png","plant_rock_cluster.png","plants_cluster.png","ridge_1.png","ridge_2.png","rock_small_1.png","rock_small_2.png","rock_spire.png","rocks_mid.png","spire_cluster.png","barrel.png","resource_crate.png","supply_box.png"];
 const resourceNodes=[{sprite:"iron_ore.png",x:2*GRID,y:2*GRID},{sprite:"ice_deposit.png",x:9*GRID,y:2.1*GRID},{sprite:"regolith.png",x:2.5*GRID,y:6.3*GRID},{sprite:"rare_minerals.png",x:9.3*GRID,y:6.2*GRID}];
@@ -68,15 +95,126 @@ document.querySelectorAll(".tab").forEach(function(tab){tab.onclick=function(){d
 
 function spriteCatalog(){const grid=document.getElementById("catalogGrid");grid.innerHTML="";spriteFiles.forEach(function(file){const item=document.createElement("div");item.className="catalog-item";item.innerHTML='<img src="'+ASSET+file+'" alt=""><div>'+file+"</div>";grid.appendChild(item)})}
 function drawImageCentered(file,cx,cy,maxW,maxH){const img=images[file];if(!img)return;const s=Math.min(maxW/img.width,maxH/img.height),w=img.width*s,h=img.height*s;ctx.drawImage(img,cx-w/2,cy-h/2,w,h)}
-function drawTerrain(){const cols=Math.ceil(innerWidth/GRID)+1,rows=Math.ceil(innerHeight/GRID)+1;for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){const file=terrainTiles[(x*7+y*11)%terrainTiles.length],img=images[file];if(img)ctx.drawImage(img,x*GRID,y*GRID,GRID+1,GRID+1);else{ctx.fillStyle="#9a3f28";ctx.fillRect(x*GRID,y*GRID,GRID+1,GRID+1)}}}
-function drawBaseInfrastructure(){const cx=Math.floor(innerWidth/2/GRID)*GRID,cy=Math.floor((innerHeight*.48)/GRID)*GRID;const road=images["road_tile_2.png"]||images["road_tile_1.png"];if(road){for(let x=cx-4*GRID;x<=cx+4*GRID;x+=GRID)ctx.drawImage(road,x,cy,GRID,GRID);for(let y=cy-3*GRID;y<=cy+3*GRID;y+=GRID)ctx.drawImage(road,cx,y,GRID,GRID)}const wallTopY=Math.max(92,cy-4*GRID),wallBottomY=Math.min(innerHeight-150,cy+4*GRID);for(let x=cx-4.5*GRID;x<=cx+4.5*GRID;x+=GRID){drawImageCentered("wall_2.png",x,wallTopY,GRID,GRID*.48);if(Math.abs(x-cx)>GRID*.8)drawImageCentered("wall_2.png",x,wallBottomY,GRID,GRID*.48)}for(let y=wallTopY+GRID;y<wallBottomY;y+=GRID){drawImageCentered("wall_4.png",cx-4.7*GRID,y,GRID*.55,GRID);drawImageCentered("wall_4.png",cx+4.7*GRID,y,GRID*.55,GRID)}drawImageCentered("base_gate.png",cx,wallBottomY+GRID*.1,GRID*1.9,GRID*1.15)}
-function drawProps(){const cx=innerWidth/2,cy=innerHeight*.48;drawImageCentered("planter_1.png",cx-GRID*1.55,cy-GRID*.35,GRID*.65,GRID*.65);drawImageCentered("planter_2.png",cx+GRID*1.55,cy-GRID*.35,GRID*.65,GRID*.65);drawImageCentered("planter_1.png",cx-GRID*1.55,cy+GRID*.85,GRID*.65,GRID*.65);drawImageCentered("planter_2.png",cx+GRID*1.55,cy+GRID*.85,GRID*.65,GRID*.65);drawImageCentered("flag.png",cx,cy-GRID*2.15,GRID*.65,GRID*.65);drawImageCentered("terminal.png",cx+GRID*.95,cy+GRID*.9,GRID*.55,GRID*.55)}
+function drawTerrain(){
+  ctx.fillStyle="#8b3f2c";
+  ctx.fillRect(0,0,innerWidth,innerHeight);
+  const mars=images["terrain_1_2.png"]||images["terrain_2_1.png"];
+  if(mars){
+    const s=160;
+    ctx.globalAlpha=.42;
+    for(let y=0;y<innerHeight;y+=s)for(let x=0;x<innerWidth;x+=s)ctx.drawImage(mars,x,y,s+1,s+1);
+    ctx.globalAlpha=1;
+  }
+}
+function drawBaseInfrastructure(){
+  const b=baseGeometry(),u=Math.min(b.w/10,b.h/7);
+  ctx.save();
+
+  // Large continuous paved compound: removes the floating checkerboard look.
+  ctx.fillStyle="rgba(179,169,150,.96)";
+  ctx.strokeStyle="rgba(70,62,54,.92)";
+  ctx.lineWidth=5;
+  ctx.beginPath();
+  ctx.roundRect(b.left+u*.25,b.top+u*.15,b.w-u*.5,b.h-u*.35,28);
+  ctx.fill();ctx.stroke();
+
+  // Inner lawns / landscaped zones.
+  ctx.fillStyle="rgba(93,118,64,.42)";
+  [[b.cx-u*3.4,b.cy-u*2.6,u*2.15,u*1.25],[b.cx+u*1.4,b.cy-u*2.65,u*2.0,u*1.18],
+   [b.cx-u*3.3,b.cy+u*.75,u*1.8,u*1.3],[b.cx+u*1.2,b.cy+u*.8,u*2.1,u*1.45]].forEach(function(r){
+      ctx.beginPath();ctx.roundRect(r[0],r[1],r[2],r[3],18);ctx.fill();
+   });
+
+  // Broad connected roads like a city-builder base.
+  ctx.strokeStyle="#5f5b55";
+  ctx.lineWidth=u*.62;
+  ctx.lineCap="round";
+  ctx.beginPath();ctx.moveTo(b.cx,b.top+u*.5);ctx.lineTo(b.cx,b.bottom-u*.6);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(b.left+u*.7,b.cy);ctx.lineTo(b.right-u*.7,b.cy);ctx.stroke();
+  ctx.strokeStyle="#d8d0c2";ctx.lineWidth=3;
+  ctx.setLineDash([14,12]);
+  ctx.beginPath();ctx.moveTo(b.cx,b.top+u*.5);ctx.lineTo(b.cx,b.bottom-u*.6);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(b.left+u*.7,b.cy);ctx.lineTo(b.right-u*.7,b.cy);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Central plaza.
+  ctx.fillStyle="#d8d1c5";ctx.strokeStyle="#777067";ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(b.cx,b.cy,u*1.15,0,Math.PI*2);ctx.fill();ctx.stroke();
+
+  // Perimeter walls with one south gate.
+  const top=b.top+u*.08,bottom=b.bottom-u*.18,left=b.left+u*.1,right=b.right-u*.1;
+  for(let x=left+u*.45;x<right-u*.3;x+=u*.95)drawImageCentered("wall_2.png",x,top,u*.95,u*.5);
+  for(let x=left+u*.45;x<right-u*.3;x+=u*.95){
+    if(Math.abs(x-b.cx)>u*1.35)drawImageCentered("wall_2.png",x,bottom,u*.95,u*.5);
+  }
+  for(let y=top+u*.75;y<bottom-u*.4;y+=u*.9){
+    drawImageCentered("wall_4.png",left,y,u*.5,u*.9);
+    drawImageCentered("wall_4.png",right,y,u*.5,u*.9);
+  }
+  drawImageCentered("base_gate.png",b.cx,bottom+u*.18,u*2.3,u*1.15);
+
+  // Build plot pads only at valid locations.
+  getBuildPlots().forEach(function(p){
+    if(p.id==="hq")return;
+    const occupied=buildings.some(function(bb){return bb.plotId===p.id});
+    if(!occupied){
+      ctx.fillStyle="rgba(225,218,205,.68)";
+      ctx.strokeStyle="rgba(104,97,87,.75)";
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.roundRect(p.x-u*.43,p.y-u*.34,u*.86,u*.68,14);ctx.fill();ctx.stroke();
+      ctx.fillStyle="rgba(70,65,58,.8)";ctx.font="bold 10px Arial";ctx.textAlign="center";
+      ctx.fillText("BUILD",p.x,p.y+4);
+    }
+  });
+  ctx.restore();
+}
+function drawProps(){
+  const b=baseGeometry(),u=Math.min(b.w/10,b.h/7);
+  [[-1.55,-.72,"planter_1.png"],[1.55,-.72,"planter_2.png"],[-1.55,.72,"planter_2.png"],[1.55,.72,"planter_1.png"]].forEach(function(p){
+    drawImageCentered(p[2],b.cx+p[0]*u,b.cy+p[1]*u,u*.58,u*.58);
+  });
+  drawImageCentered("flag.png",b.cx-u*.72,b.cy-u*.15,u*.48,u*.6);
+  drawImageCentered("terminal.png",b.cx+u*.78,b.cy+u*.35,u*.46,u*.58);
+}
 function drawBuildings(){buildings.forEach(function(b,index){const d=buildingData[b.type],size=GRID*d.size*(1+Math.min((b.level-1)*.025,.18));drawImageCentered(d.sprite,b.x+GRID/2,b.y+GRID/2,size,size);ctx.save();ctx.font="bold 11px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=index===selectedPlaced?"#72ef68":"rgba(15,18,22,.9)";ctx.beginPath();ctx.roundRect(b.x+GRID-31,b.y+5,26,19,7);ctx.fill();ctx.fillStyle=index===selectedPlaced?"#102111":"#ffd17a";ctx.fillText("Lv."+b.level,b.x+GRID-18,b.y+14.5);if(index===selectedPlaced){ctx.strokeStyle="#7cff5e";ctx.lineWidth=3;ctx.strokeRect(b.x+2,b.y+2,GRID-4,GRID-4)}ctx.restore()})}
 function drawUnits(){const frame=Math.floor(performance.now()/220);units.forEach(function(u){const size=u.kind==="rover"?GRID*.75:GRID*.55;drawImageCentered(u.frames[frame%u.frames.length],u.x,u.y,size,size)})}
-function updateUnits(dt){units.forEach(function(u){u.x+=u.vx*dt;u.y+=u.vy*dt;if(u.x<GRID||u.x>innerWidth-GRID)u.vx*=-1;if(u.y<GRID||u.y>innerHeight-GRID*1.8)u.vy*=-1})}
-function occupiedAt(gx,gy){return buildings.findIndex(function(b){return b.x===gx&&b.y===gy})}
-
-function placeOrSelect(x,y){const gx=Math.floor(x/GRID)*GRID,gy=Math.floor(y/GRID)*GRID;const cx=Math.floor(innerWidth/2/GRID)*GRID,cy=Math.floor((innerHeight*.48)/GRID)*GRID;if(gy<Math.max(90,cy-4*GRID)||gy>Math.min(innerHeight-190,cy+3*GRID)||gx<cx-4*GRID||gx>cx+4*GRID){statusEl.textContent="Build inside the colony walls.";return}if(Math.abs(gx-cx)<GRID*.9||Math.abs(gy-cy)<GRID*.9){statusEl.textContent="Keep the central roads clear.";return}const occupied=occupiedAt(gx,gy);if(occupied>=0){selectedPlaced=occupied;showSelectedPanel();statusEl.textContent=buildingData[buildings[occupied].type].name+" selected.";return}const d=buildingData[selectedBuilding];if(!d)return;if(colony.hqLevel<d.unlock){statusEl.textContent="Requires Command Hub Lv."+d.unlock+".";return}if(colony.credits<d.cost){statusEl.textContent="Not enough credits.";return}colony.credits-=d.cost;buildings.push({type:selectedBuilding,x:gx,y:gy,level:1});selectedPlaced=buildings.length-1;showSelectedPanel();updateHUD();updateMissions();statusEl.textContent=d.name+" constructed."}
+function updateUnits(dt){const b=baseGeometry();units.forEach(function(u){u.x+=u.vx*dt;u.y+=u.vy*dt;if(u.x<b.left+70||u.x>b.right-70)u.vx*=-1;if(u.y<b.top+70||u.y>b.bottom-100)u.vy*=-1})}
+function buildingAtPoint(x,y){
+  let best=-1,bestDist=Infinity;
+  buildings.forEach(function(b,i){
+    const cx=b.x+GRID/2,cy=b.y+GRID/2,d=Math.hypot(x-cx,y-cy);
+    if(d<62&&d<bestDist){best=i;bestDist=d}
+  });
+  return best;
+}
+function nearestFreePlot(x,y){
+  let best=null,bestDist=Infinity;
+  getBuildPlots().forEach(function(p){
+    if(p.id==="hq"||buildings.some(function(b){return b.plotId===p.id}))return;
+    const d=Math.hypot(x-p.x,y-p.y);
+    if(d<bestDist){best=p;bestDist=d}
+  });
+  return bestDist<95?best:null;
+}
+function placeOrSelect(x,y){
+  const hit=buildingAtPoint(x,y);
+  if(hit>=0){
+    selectedPlaced=hit;showSelectedPanel();
+    statusEl.textContent=buildingData[buildings[hit].type].name+" selected.";
+    return;
+  }
+  const p=nearestFreePlot(x,y);
+  if(!p){statusEl.textContent="Tap an empty build pad inside the colony.";return}
+  const d=buildingData[selectedBuilding];
+  if(!d)return;
+  if(colony.hqLevel<d.unlock){statusEl.textContent="Requires Command Hub Lv."+d.unlock+".";return}
+  if(colony.credits<d.cost){statusEl.textContent="Not enough credits.";return}
+  colony.credits-=d.cost;
+  buildings.push({type:selectedBuilding,plotId:p.id,x:p.x-GRID/2,y:p.y-GRID/2,level:1});
+  selectedPlaced=buildings.length-1;
+  showSelectedPanel();updateHUD();updateMissions();
+  statusEl.textContent=d.name+" constructed.";
+}
 canvas.addEventListener("pointerdown",function(e){if(gameMode==="base")placeOrSelect(e.clientX,e.clientY)});
 
 function showSelectedPanel(){const panel=document.getElementById("selectedPanel"),b=buildings[selectedPlaced];if(!b){panel.classList.add("hidden");return}const d=buildingData[b.type],c=upgradeCost(b),m=multiplier(b);panel.classList.remove("hidden");document.getElementById("selectedSprite").src=ASSET+d.sprite;document.getElementById("selectedName").textContent=d.name;document.getElementById("selectedLevel").textContent=b.level;document.getElementById("selectedProgressText").textContent=b.level+"/10";document.getElementById("selectedProgressBar").style.width=(b.level/10*100)+"%";document.getElementById("statProduction").textContent=d.baseProd+" x"+m.toFixed(2);document.getElementById("statPower").textContent=(d.basePower>=0?"+":"")+Math.round(d.basePower*m)+"/s";document.getElementById("statCapacity").textContent=Math.round(d.capacity*m)||"—";document.getElementById("statScore").textContent=buildingScore(b);document.getElementById("upgradeCostText").textContent=b.level>=10?"MAX LEVEL":"$"+c.credits+" + "+c.iron+" iron";const req=document.getElementById("upgradeRequirements");req.innerHTML=b.level>=10?'<span class="req-ok">Maximum building level reached.</span>':'<div class="'+(colony.credits>=c.credits?"req-ok":"req-bad")+'">Credits: '+Math.floor(colony.credits)+" / "+c.credits+'</div><div class="'+(colony.iron>=c.iron?"req-ok":"req-bad")+'">Iron: '+Math.floor(colony.iron)+" / "+c.iron+'</div><div class="req-ok">Command Hub: Lv.'+colony.hqLevel+"</div>";document.getElementById("upgradeBtn").disabled=!canUpgrade(b)}
@@ -91,7 +229,7 @@ const missions=[{label:"Build 5 structures",value:function(){return buildings.le
 function updateMissions(){const list=document.getElementById("missionList");list.innerHTML="";missions.forEach(function(m){const v=Math.min(m.value(),m.target),done=v>=m.target,el=document.createElement("div");el.className="mission"+(done?" done":"");el.innerHTML='<div class="mission-line"><span>'+(done?"✓ ":"")+m.label+"</span><b>"+v+"/"+m.target+'</b></div><div class="mission-progress"><div style="width:'+(v/m.target*100)+'%"></div></div>';list.appendChild(el)})}
 
 document.getElementById("sellBtn").onclick=function(){if(colony.iron>=10){colony.iron-=10;colony.credits+=40;statusEl.textContent="Sold 10 iron for $40.";updateHUD()}else statusEl.textContent="You need at least 10 iron."};
-document.getElementById("demolishBtn").onclick=function(){if(selectedPlaced==null||!buildings[selectedPlaced]){statusEl.textContent="Select a building first.";return}const removed=buildings.splice(selectedPlaced,1)[0];colony.credits+=Math.floor(buildingData[removed.type].cost*.35);selectedPlaced=null;hideSelectedPanel();updateHUD();updateMissions();statusEl.textContent="Building demolished. 35% salvage returned."};
+document.getElementById("demolishBtn").onclick=function(){if(selectedPlaced==null||!buildings[selectedPlaced]){statusEl.textContent="Select a building first.";return}if(buildings[selectedPlaced].type==="command"){statusEl.textContent="The Command Center cannot be demolished.";return}const removed=buildings.splice(selectedPlaced,1)[0];colony.credits+=Math.floor(buildingData[removed.type].cost*.35);selectedPlaced=null;hideSelectedPanel();updateHUD();updateMissions();statusEl.textContent="Building demolished. 35% salvage returned."};
 document.getElementById("pauseBtn").onclick=function(){paused=!paused;statusEl.textContent=paused?"Simulation paused.":"Simulation resumed."};
 document.getElementById("speedBtn").onclick=function(){speed=speed===1?2:1;statusEl.textContent="Simulation speed: "+speed+"x"};
 document.getElementById("menuBtn").onclick=function(){document.getElementById("catalog").classList.remove("hidden")};
@@ -170,6 +308,6 @@ canvas.addEventListener("pointerdown",function(e){
 },true);
 
 function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
-window.addEventListener("resize",resizeCanvas);
-resizeCanvas();seedBaseLayout();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
+window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots()});
+resizeCanvas();seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop)});
