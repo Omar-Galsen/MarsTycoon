@@ -1,0 +1,132 @@
+{
+  "command_center.png": {
+    "width": 452,
+    "height": 375,
+    "source_component_area": 83335
+  },
+  "habitat_dome_small.png": {
+    "width": 485,
+    "height": 299,
+    "source_component_area": 96796
+  },
+  "habitat_dome_large.png": {
+    "width": 370,
+    "height": 254,
+    "source_component_area": 58888
+  },
+  "water_processing_complex.png": {
+    "width": 263,
+    "height": 233,
+    "source_component_area": 30379
+  },
+  "solar_power_station.png": {
+    "width": 289,
+    "height": 236,
+    "source_component_area": 30835
+  },
+  "life_support_complex.png": {
+    "width": 290,
+    "height": 211,
+    "source_component_area": 32375
+  },
+  "greenhouse_complex.png": {
+    "width": 280,
+    "height": 183,
+    "source_component_area": 28852
+  },
+  "storage_warehouse.png": {
+    "width": 288,
+    "height": 202,
+    "source_component_area": 34849
+  },
+  "industrial_refinery.png": {
+    "width": 308,
+    "height": 233,
+    "source_component_area": 35279
+  },
+  "satellite_comms_center.png": {
+    "width": 298,
+    "height": 244,
+    "source_component_area": 38443
+  },
+  "rover_garage.png": {
+    "width": 329,
+    "height": 195,
+    "source_component_area": 39543
+  },
+  "landing_pad.png": {
+    "width": 367,
+    "height": 196,
+    "source_component_area": 38849
+  },
+  "base_gate.png": {
+    "width": 293,
+    "height": 167,
+    "source_component_area": 26398
+  },
+  "wall_tower.png": {
+    "width": 74,
+    "height": 132,
+    "source_component_area": 5133
+  },
+  "wall_straight.png": {
+    "width": 190,
+    "height": 114,
+    "source_component_area": 14900
+  },
+  "road_cross.png": {
+    "width": 201,
+    "height": 135,
+    "source_component_area": 15731
+  },
+  "wall_corner.png": {
+    "width": 166,
+    "height": 124,
+    "source_component_area": 12244
+  },
+  "road_straight.png": {
+    "width": 206,
+    "height": 121,
+    "source_component_area": 11200
+  },
+  "road_corner.png": {
+    "width": 205,
+    "height": 109,
+    "source_component_area": 10771
+  },
+  "garden_planter.png": {
+    "width": 214,
+    "height": 165,
+    "source_component_area": 17376
+  },
+  "fountain_plaza.png": {
+    "width": 219,
+    "height": 145,
+    "source_component_area": 16610
+  },
+  "build_pad.png": {
+    "width": 261,
+    "height": 151,
+    "source_component_area": 20044
+  },
+  "exploration_rover.png": {
+    "width": 172,
+    "height": 138,
+    "source_component_area": 10561
+  },
+  "astronaut.png": {
+    "width": 69,
+    "height": 122,
+    "source_component_area": 4810
+  },
+  "cargo_crates.png": {
+    "width": 181,
+    "height": 130,
+    "source_component_area": 14264
+  },
+  "utility_drone.png": {
+    "width": 131,
+    "height": 81,
+    "source_component_area": 5631
+  }
+}
