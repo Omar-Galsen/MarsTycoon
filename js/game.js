@@ -208,6 +208,33 @@ function drawBuildings(){
     ctx.restore();
   });
 }
+function drawUnits(){
+  const frame=Math.floor(performance.now()/220);
+  units.forEach(function(u){
+    let file=u.frames[frame%u.frames.length];
+    if(u.kind==="colonist"&&images["BB/astronaut.png"])file="BB/astronaut.png";
+    if(u.kind==="rover"&&images["BB/exploration_rover.png"])file="BB/exploration_rover.png";
+    if(u.kind==="drone"&&images["BB/utility_drone.png"])file="BB/utility_drone.png";
+    const size=u.kind==="rover"?GRID*.8:GRID*.58;
+    drawImageCentered(file,u.x,u.y,size,size);
+  });
+}
+function updateUnits(dt){
+  const b=baseGeometry();
+  units.forEach(function(u){
+    u.x+=u.vx*dt;u.y+=u.vy*dt;
+    if(u.x<b.left+70||u.x>b.right-70)u.vx*=-1;
+    if(u.y<b.top+70||u.y>b.bottom-95)u.vy*=-1;
+  });
+}
+function buildingAtPoint(x,y){
+  let best=-1,bestDist=Infinity;
+  buildings.forEach(function(b,i){
+    const cx=b.x+GRID/2,cy=b.y+GRID/2,d=Math.hypot(x-cx,y-cy);
+    if(d<75&&d<bestDist){best=i;bestDist=d}
+  });
+  return best;
+}
 function nearestFreePlot(x,y){
   let best=null,bestDist=Infinity;
   getBuildPlots().forEach(function(p){
