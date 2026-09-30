@@ -37,3 +37,14 @@ body.outside-mode #buildPanel,body.outside-mode #selectedPanel,body.outside-mode
 body.outside-mode #missionPanel{display:none}
 body.outside-mode #status{bottom:18px}
 @media(max-width:800px){#zoneSwitch{top:62px}.zone-btn{padding:6px 10px}#expeditionPanel{left:8px;bottom:55px;width:180px}}
+
+#layoutPanel{position:fixed;z-index:29;right:8px;top:78px;width:285px;background:linear-gradient(180deg,rgba(27,31,37,.98),rgba(13,15,18,.98));border:1px solid rgba(240,197,94,.5);border-radius:12px;padding:10px;box-shadow:0 12px 32px rgba(0,0,0,.45)}
+#layoutPanel.hidden{display:none}.layout-title{font-size:11px;font-weight:900;letter-spacing:.12em;color:#ffd174;margin-bottom:6px}.layout-help{font-size:9px;line-height:1.45;color:#c7cbd0;margin-bottom:8px}
+.layout-row{display:flex;gap:6px}.layout-row button{flex:1;border:1px solid #c48342;background:#6e3b20;color:#fff;border-radius:7px;padding:7px;font-size:9px;font-weight:900;cursor:pointer}
+#layoutOutput{width:100%;height:155px;margin-top:8px;background:#0f1216;color:#9fe38c;border:1px solid #353b42;border-radius:7px;padding:7px;font:9px/1.35 Consolas,monospace;resize:none}
+body.layout-mode #selectedPanel{display:none!important}
+body.layout-mode #missionPanel{display:none}
+body.layout-mode #status{bottom:108px}
+body.layout-mode #game{cursor:grab}
+body.layout-mode.dragging #game{cursor:grabbing}
+@media(max-width:800px){#layoutPanel{top:auto;bottom:115px;right:8px;width:min(285px,calc(100vw - 16px));#layoutOutput{height:100px}}}
