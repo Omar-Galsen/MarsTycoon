@@ -37,6 +37,7 @@ function loadSprites(){
 const colony={credits:1500,iron:80,water:80,oxygen:110,power:80,population:3,hqLevel:1};
 let selectedBuilding="miner",selectedPlaced=null,paused=false,speed=1,activeTab="economy",simulationAccumulator=0,lastTime=performance.now();
 let gameMode="base";
+let layoutDragIndex=null,layoutDragOffsetX=0,layoutDragOffsetY=0;
 const expedition={x:innerWidth*0.5,y:innerHeight*0.5,targetX:null,targetY:null,cargo:0,capacity:40,suitOxygen:100,harvestCooldown:0};
 
 const buildingData={
@@ -355,9 +356,18 @@ function placeOrSelect(x,y){
     statusEl.textContent=buildingData[buildings[hit].type].name+" selected.";
     return;
   }
+  const d=buildingData[selectedBuilding];
+  if(gameMode==="layout"){
+    const bg=baseGeometry();
+    if(x<bg.left+55||x>bg.right-55||y<bg.top+55||y>bg.bottom-70){statusEl.textContent="Place buildings inside the base walls.";return}
+    buildings.push({type:selectedBuilding,plotId:null,x:x-GRID/2,y:y-GRID/2,level:1});
+    selectedPlaced=buildings.length-1;
+    refreshLayoutOutput();
+    statusEl.textContent=d.name+" added to custom layout.";
+    return;
+  }
   const p=nearestFreePlot(x,y);
   if(!p){statusEl.textContent="Tap an empty build pad inside the colony.";return}
-  const d=buildingData[selectedBuilding];
   if(!d)return;
   if(colony.hqLevel<d.unlock){statusEl.textContent="Requires Command Hub Lv."+d.unlock+".";return}
   if(colony.credits<d.cost){statusEl.textContent="Not enough credits.";return}
@@ -367,7 +377,31 @@ function placeOrSelect(x,y){
   showSelectedPanel();updateHUD();updateMissions();
   statusEl.textContent=d.name+" constructed.";
 }
-canvas.addEventListener("pointerdown",function(e){if(gameMode==="base")placeOrSelect(e.clientX,e.clientY)});
+canvas.addEventListener("pointerdown",function(e){
+  if(gameMode==="layout"){
+    const hit=buildingAtPoint(e.clientX,e.clientY);
+    if(hit>=0){
+      layoutDragIndex=hit;
+      layoutDragOffsetX=e.clientX-(buildings[hit].x+GRID/2);
+      layoutDragOffsetY=e.clientY-(buildings[hit].y+GRID/2);
+      document.body.classList.add("dragging");
+      canvas.setPointerCapture&&canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    placeOrSelect(e.clientX,e.clientY);
+    return;
+  }
+  if(gameMode==="base")placeOrSelect(e.clientX,e.clientY);
+});
+canvas.addEventListener("pointermove",function(e){
+  if(gameMode!=="layout"||layoutDragIndex==null)return;
+  const bg=baseGeometry(),x=Math.max(bg.left+55,Math.min(bg.right-55,e.clientX-layoutDragOffsetX)),y=Math.max(bg.top+55,Math.min(bg.bottom-70,e.clientY-layoutDragOffsetY));
+  buildings[layoutDragIndex].x=x-GRID/2;buildings[layoutDragIndex].y=y-GRID/2;buildings[layoutDragIndex].plotId=null;
+  refreshLayoutOutput();
+});
+function endLayoutDrag(){if(layoutDragIndex!=null){layoutDragIndex=null;document.body.classList.remove("dragging");refreshLayoutOutput();statusEl.textContent="Building moved. Copy layout when finished."}}
+canvas.addEventListener("pointerup",endLayoutDrag);
+canvas.addEventListener("pointercancel",endLayoutDrag);
 
 function showSelectedPanel(){const panel=document.getElementById("selectedPanel"),b=buildings[selectedPlaced];if(!b){panel.classList.add("hidden");return}const d=buildingData[b.type],c=upgradeCost(b),m=multiplier(b);panel.classList.remove("hidden");document.getElementById("selectedSprite").src=(d.baseSprite&&images["BB/"+d.baseSprite])?BASE_ASSET+d.baseSprite:ASSET+d.sprite;document.getElementById("selectedName").textContent=d.name;document.getElementById("selectedLevel").textContent=b.level;document.getElementById("selectedProgressText").textContent=b.level+"/10";document.getElementById("selectedProgressBar").style.width=(b.level/10*100)+"%";document.getElementById("statProduction").textContent=d.baseProd+" x"+m.toFixed(2);document.getElementById("statPower").textContent=(d.basePower>=0?"+":"")+Math.round(d.basePower*m)+"/s";document.getElementById("statCapacity").textContent=Math.round(d.capacity*m)||"—";document.getElementById("statScore").textContent=buildingScore(b);document.getElementById("upgradeCostText").textContent=b.level>=10?"MAX LEVEL":"$"+c.credits+" + "+c.iron+" iron";const req=document.getElementById("upgradeRequirements");req.innerHTML=b.level>=10?'<span class="req-ok">Maximum building level reached.</span>':'<div class="'+(colony.credits>=c.credits?"req-ok":"req-bad")+'">Credits: '+Math.floor(colony.credits)+" / "+c.credits+'</div><div class="'+(colony.iron>=c.iron?"req-ok":"req-bad")+'">Iron: '+Math.floor(colony.iron)+" / "+c.iron+'</div><div class="req-ok">Command Hub: Lv.'+colony.hqLevel+"</div>";document.getElementById("upgradeBtn").disabled=!canUpgrade(b)}
 function hideSelectedPanel(){document.getElementById("selectedPanel").classList.add("hidden")}
@@ -387,23 +421,67 @@ document.getElementById("speedBtn").onclick=function(){speed=speed===1?2:1;statu
 document.getElementById("menuBtn").onclick=function(){document.getElementById("catalog").classList.remove("hidden")};
 document.getElementById("closeCatalog").onclick=function(){document.getElementById("catalog").classList.add("hidden")};
 
+function exportLayoutData(){
+  const b=baseGeometry();
+  const data={
+    version:1,
+    canvas:{width:Math.round(innerWidth),height:Math.round(innerHeight)},
+    base:{left:Math.round(b.left),top:Math.round(b.top),width:Math.round(b.w),height:Math.round(b.h)},
+    buildings:buildings.map(function(x){
+      const cx=x.x+GRID/2,cy=x.y+GRID/2;
+      return {
+        type:x.type,
+        level:x.level,
+        plotId:x.plotId||null,
+        x:Math.round(cx),
+        y:Math.round(cy),
+        nx:+((cx-b.left)/b.w).toFixed(4),
+        ny:+((cy-b.top)/b.h).toFixed(4)
+      };
+    })
+  };
+  return JSON.stringify(data,null,2);
+}
+function refreshLayoutOutput(){
+  const el=document.getElementById("layoutOutput");
+  if(el)el.value=exportLayoutData();
+}
+async function copyLayoutData(){
+  const text=exportLayoutData();
+  refreshLayoutOutput();
+  try{await navigator.clipboard.writeText(text);statusEl.textContent="Layout JSON copied. Paste it into ChatGPT."}
+  catch(e){statusEl.textContent="Select the layout JSON and copy it manually."}
+}
+function downloadLayoutData(){
+  const text=exportLayoutData(),blob=new Blob([text],{type:"application/json"}),url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="mars_tycoon_layout.json";a.click();URL.revokeObjectURL(url);
+}
+document.getElementById("copyLayoutBtn").onclick=copyLayoutData;
+document.getElementById("downloadLayoutBtn").onclick=downloadLayoutData;
+
 function setMode(mode){
   gameMode=mode;
   document.body.classList.toggle("outside-mode",mode==="outside");
+  document.body.classList.toggle("layout-mode",mode==="layout");
   document.getElementById("baseModeBtn").classList.toggle("active",mode==="base");
+  document.getElementById("layoutModeBtn").classList.toggle("active",mode==="layout");
   document.getElementById("outsideModeBtn").classList.toggle("active",mode==="outside");
   document.getElementById("expeditionPanel").classList.toggle("hidden",mode!=="outside");
-  if(mode==="outside"){
+  document.getElementById("layoutPanel").classList.toggle("hidden",mode!=="layout");
+  if(mode==="layout"){paused=true;selectedPlaced=null;hideSelectedPanel();refreshLayoutOutput();statusEl.textContent="Layout mode: drag buildings, add more, then copy the JSON.";}
+  else if(mode==="outside"){
     selectedPlaced=null;hideSelectedPanel();
     expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;
     statusEl.textContent="Tap the terrain to move. Approach ore deposits to collect them.";
-  }else{
+  }else if(mode==="base"){
+    paused=false;
     depositCargo();
     statusEl.textContent="Back at the colony base.";
   }
   updateExpeditionHUD();
 }
 document.getElementById("baseModeBtn").onclick=function(){setMode("base")};
+document.getElementById("layoutModeBtn").onclick=function(){setMode("layout")};
 document.getElementById("outsideModeBtn").onclick=function(){setMode("outside")};
 document.getElementById("returnBaseBtn").onclick=function(){setMode("base")};
 
@@ -460,6 +538,6 @@ canvas.addEventListener("pointerdown",function(e){
 },true);
 
 function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
-window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots()});
+window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop)});
