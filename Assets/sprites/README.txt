@@ -1,5 +1,1 @@
-Mars Tycoon 2D sprite pack
-
-Individual transparent PNGs cut from the supplied sprite sheet.
-sprite_sheet_original.png is included for future re-slicing.
-manifest.json records the exported image dimensions.
+Clean Mars Tycoon sprite replacement pack. Assets were isolated from the new isometric sheets using their alpha masks so neighboring sprites and labels are removed.
