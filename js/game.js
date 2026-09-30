@@ -2,14 +2,35 @@ const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 const statusEl=document.getElementById("status");
 const buildMenu=document.getElementById("buildMenu");
-const GRID=96,ASSET="Assets/sprites/",BASE_ASSET="Assets/sprites/BaseBuilder/";
+const GRID=96,ASSET="Assets/sprites/",BASE_ASSET="Assets/sprites/BaseBuilder/",ROAD_ASSET=BASE_ASSET+"Roads/",WALL_ASSET=BASE_ASSET+"Walls/",PLAZA_ASSET=BASE_ASSET+"Plazas/",DECOR_ASSET=BASE_ASSET+"Decor/";
 const spriteFiles=["barrel.png","colonist_1.png","colonist_2.png","colonist_3.png","colonist_4.png","colonist_5.png","crater_large.png","crater_small.png","drone_large.png","drone_small.png","dune_small.png","flag.png","habitat.png","habitat_small.png","ice_deposit.png","iron_ore.png","lamp_post.png","life_support_tower.png","miner.png","oxygen_plant.png","plant_rock_cluster.png","plants_cluster.png","radio_tower.png","rare_minerals.png","regolith.png","resource_crate.png","ridge_1.png","ridge_2.png","robot_worker.png","rock_small_1.png","rock_small_2.png","rock_spire.png","rocket_export.png","rocks_mid.png","rover.png","satellite_dish.png","solar_array_large.png","solar_panel.png","spire_cluster.png","storage.png","storage_large.png","supply_box.png","tank_station_1.png","tank_station_2.png","terminal.png","terrain_1_1.png","terrain_1_2.png","terrain_1_3.png","terrain_1_4.png","terrain_1_5.png","terrain_2_1.png","terrain_2_2.png","terrain_2_3.png","terrain_2_4.png","terrain_2_5.png","terrain_3_1.png","terrain_3_2.png","terrain_3_3.png","terrain_3_4.png","terrain_3_5.png","ui_build_button.png","ui_demolish_button.png","ui_fast_button.png","ui_health_bars.png","ui_menu_button.png","ui_pause_button.png","ui_resources_panel.png","ui_selection.png","ui_sell_button.png","ui_settings_button.png","ui_upgrade_button.png","water_extractor.png","wind_sensor.png","command_center.png","base_gate.png","greenhouse_1.png","greenhouse_2.png","planter_1.png","planter_2.png","refinery.png","rover_garage.png","road_tile_1.png","road_tile_2.png","wall_1.png","wall_2.png","wall_3.png","wall_4.png","ore_crate.png","transport_rover.png"];
 const baseBuilderFiles=["command_center.png","habitat_dome_small.png","habitat_dome_large.png","water_processing_complex.png","solar_power_station.png","life_support_complex.png","greenhouse_complex.png","storage_warehouse.png","industrial_refinery.png","satellite_comms_center.png","rover_garage.png","landing_pad.png","base_gate.png","wall_tower.png","wall_straight.png","wall_corner.png","road_straight.png","road_corner.png","road_cross.png","build_pad.png","garden_planter.png","fountain_plaza.png","exploration_rover.png","astronaut.png","utility_drone.png","cargo_crates.png"];
+const puzzleFiles={
+  "P/Roads/road_straight.png":ROAD_ASSET+"road_straight.png",
+  "P/Roads/road_corner.png":ROAD_ASSET+"road_corner.png",
+  "P/Roads/road_t.png":ROAD_ASSET+"road_t.png",
+  "P/Roads/road_cross.png":ROAD_ASSET+"road_cross.png",
+  "P/Roads/road_end.png":ROAD_ASSET+"road_end.png",
+  "P/Walls/wall_straight.png":WALL_ASSET+"wall_straight.png",
+  "P/Walls/wall_corner.png":WALL_ASSET+"wall_corner.png",
+  "P/Walls/wall_tower.png":WALL_ASSET+"wall_tower.png",
+  "P/Walls/gate.png":WALL_ASSET+"gate.png",
+  "P/Plazas/plaza.png":PLAZA_ASSET+"plaza.png",
+  "P/Plazas/build_pad.png":PLAZA_ASSET+"build_pad.png",
+  "P/Plazas/parking_pad.png":PLAZA_ASSET+"parking_pad.png",
+  "P/Plazas/landing_pad.png":PLAZA_ASSET+"landing_pad.png",
+  "P/Decor/planter.png":DECOR_ASSET+"planter.png",
+  "P/Decor/fountain.png":DECOR_ASSET+"fountain.png",
+  "P/Decor/light.png":DECOR_ASSET+"light.png",
+  "P/Decor/crate.png":DECOR_ASSET+"crate.png",
+  "P/Decor/terminal.png":DECOR_ASSET+"terminal.png"
+};
 const images={};let loadedCount=0;
 function loadOne(key,url){return new Promise(function(resolve){const img=new Image();img.onload=function(){images[key]=img;loadedCount++;statusEl.textContent="Loading colony art…";resolve()};img.onerror=function(){resolve()};img.src=url})}
 function loadSprites(){
   const jobs=spriteFiles.map(function(file){return loadOne(file,ASSET+file)});
   baseBuilderFiles.forEach(function(file){jobs.push(loadOne("BB/"+file,BASE_ASSET+file))});
+  Object.keys(puzzleFiles).forEach(function(key){jobs.push(loadOne(key,puzzleFiles[key]))});
   return Promise.all(jobs);
 }
 
@@ -105,6 +126,22 @@ function buildingSprite(data){
   return data?data.sprite:null;
 }
 function baseArt(name,fallback){
+  const puzzleCandidates={
+    "road_straight.png":"P/Roads/road_straight.png",
+    "road_corner.png":"P/Roads/road_corner.png",
+    "road_cross.png":"P/Roads/road_cross.png",
+    "build_pad.png":"P/Plazas/build_pad.png",
+    "fountain_plaza.png":"P/Decor/fountain.png",
+    "garden_planter.png":"P/Decor/planter.png",
+    "cargo_crates.png":"P/Decor/crate.png",
+    "wall_straight.png":"P/Walls/wall_straight.png",
+    "wall_corner.png":"P/Walls/wall_corner.png",
+    "wall_tower.png":"P/Walls/wall_tower.png",
+    "base_gate.png":"P/Walls/gate.png",
+    "landing_pad.png":"P/Plazas/landing_pad.png"
+  };
+  const p=puzzleCandidates[name];
+  if(p&&images[p])return p;
   return images["BB/"+name]?"BB/"+name:fallback;
 }
 function spriteCatalog(){const grid=document.getElementById("catalogGrid");grid.innerHTML="";spriteFiles.forEach(function(file){const item=document.createElement("div");item.className="catalog-item";item.innerHTML='<img src="'+ASSET+file+'" alt=""><div>'+file+"</div>";grid.appendChild(item)})}
@@ -120,77 +157,88 @@ function drawTerrain(){
     ctx.globalAlpha=1;
   }
 }
+function drawRotated(file,cx,cy,maxW,maxH,angle){
+  const im=images[file];if(!im)return;
+  const s=Math.min(maxW/im.width,maxH/im.height),w=im.width*s,h=im.height*s;
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(angle);ctx.drawImage(im,-w/2,-h/2,w,h);ctx.restore();
+}
 function drawBaseInfrastructure(){
   const b=baseGeometry(),u=Math.min(b.w/12,b.h/8);
   ctx.save();
 
-  // Mars outside + hard colony footprint.
-  ctx.fillStyle="rgba(171,158,136,.98)";
-  ctx.strokeStyle="#55524c";ctx.lineWidth=4;
-  ctx.beginPath();ctx.roundRect(b.left+u*.2,b.top+u*.15,b.w-u*.4,b.h-u*.28,22);ctx.fill();ctx.stroke();
+  ctx.fillStyle="#aa9e8a";ctx.strokeStyle="#57524a";ctx.lineWidth=4;
+  ctx.beginPath();ctx.roundRect(b.left+u*.18,b.top+u*.12,b.w-u*.36,b.h-u*.22,22);ctx.fill();ctx.stroke();
 
-  // Internal landscaped districts.
-  ctx.fillStyle="rgba(84,112,61,.55)";
-  [
-    [b.cx-5*u,b.cy-3.25*u,2.8*u,1.55*u],
-    [b.cx+2.25*u,b.cy-3.2*u,2.8*u,1.5*u],
-    [b.cx-5*u,b.cy+.85*u,2.65*u,2.0*u],
-    [b.cx+2.35*u,b.cy+.85*u,2.75*u,2.0*u]
-  ].forEach(function(r){ctx.beginPath();ctx.roundRect(r[0],r[1],r[2],r[3],22);ctx.fill()});
+  // Four landscaped quadrants, leaving a dense central transport network.
+  ctx.fillStyle="rgba(78,111,60,.58)";
+  [[-4.7,-3.15,2.7,1.45],[2.1,-3.15,2.8,1.45],[-4.7,.85,2.7,1.8],[2.15,.85,2.75,1.8]].forEach(function(r){
+    ctx.beginPath();ctx.roundRect(b.cx+r[0]*u,b.cy+r[1]*u,r[2]*u,r[3]*u,18);ctx.fill();
+  });
 
-  // Roads: use generated road sprites if present; otherwise clean vector roads.
-  const roadStraight=baseArt("road_straight.png",null),roadCross=baseArt("road_cross.png",null);
-  if(roadStraight&&images[roadStraight]){
-    for(let x=b.cx-4.8*u;x<=b.cx+4.8*u;x+=u*.92)drawImageCentered(roadStraight,x,b.cy,u*1.12,u*.65);
-    for(let y=b.cy-3.0*u;y<=b.cy+3.0*u;y+=u*.92){
-      ctx.save();ctx.translate(b.cx,y);ctx.rotate(Math.PI/2);
-      const im=images[roadStraight],s=Math.min((u*1.12)/im.width,(u*.65)/im.height),ww=im.width*s,hh=im.height*s;
-      ctx.drawImage(im,-ww/2,-hh/2,ww,hh);ctx.restore();
+  const rs=baseArt("road_straight.png",null),rc=baseArt("road_cross.png",null),corner=baseArt("road_corner.png",null);
+  if(rs&&images[rs]){
+    // horizontal spine
+    for(let i=-5;i<=5;i++)drawImageCentered(rs,b.cx+i*u*.86,b.cy,u*.98,u*.58);
+    // vertical spine
+    for(let i=-3;i<=3;i++)drawRotated(rs,b.cx,b.cy+i*u*.86,u*.98,u*.58,Math.PI/2);
+    if(rc&&images[rc])drawImageCentered(rc,b.cx,b.cy,u*1.15,u*1.15);
+
+    // secondary loops into districts
+    for(let i=-4;i<=-2;i++){drawImageCentered(rs,b.cx+i*u*.86,b.cy-2.0*u,u*.9,u*.54);drawImageCentered(rs,b.cx+i*u*.86,b.cy+2.15*u,u*.9,u*.54);}
+    for(let i=2;i<=4;i++){drawImageCentered(rs,b.cx+i*u*.86,b.cy-2.0*u,u*.9,u*.54);drawImageCentered(rs,b.cx+i*u*.86,b.cy+2.15*u,u*.9,u*.54);}
+    if(corner&&images[corner]){
+      drawImageCentered(corner,b.cx-1.65*u,b.cy-2*u,u*.9,u*.9);
+      drawRotated(corner,b.cx+1.65*u,b.cy-2*u,u*.9,u*.9,Math.PI/2);
+      drawRotated(corner,b.cx-1.65*u,b.cy+2.15*u,u*.9,u*.9,-Math.PI/2);
+      drawRotated(corner,b.cx+1.65*u,b.cy+2.15*u,u*.9,u*.9,Math.PI);
     }
-    if(roadCross&&images[roadCross])drawImageCentered(roadCross,b.cx,b.cy,u*1.25,u*1.25);
-  }else{
-    ctx.strokeStyle="#5d5b57";ctx.lineCap="round";ctx.lineWidth=u*.58;
-    ctx.beginPath();ctx.moveTo(b.left+u*.8,b.cy);ctx.lineTo(b.right-u*.8,b.cy);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(b.cx,b.top+u*.55);ctx.lineTo(b.cx,b.bottom-u*.65);ctx.stroke();
-    ctx.strokeStyle="#ddd6c9";ctx.lineWidth=2.5;ctx.setLineDash([13,11]);
-    ctx.beginPath();ctx.moveTo(b.left+u*.8,b.cy);ctx.lineTo(b.right-u*.8,b.cy);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(b.cx,b.top+u*.55);ctx.lineTo(b.cx,b.bottom-u*.65);ctx.stroke();ctx.setLineDash([]);
   }
 
-  // Central civic plaza / fountain under HQ.
-  const fountain=baseArt("fountain_plaza.png",null);
-  if(fountain&&images[fountain])drawImageCentered(fountain,b.cx,b.cy+u*.72,u*1.15,u*.78);
-  else{ctx.fillStyle="#d7d0c2";ctx.strokeStyle="#716c63";ctx.lineWidth=3;ctx.beginPath();ctx.arc(b.cx,b.cy,u*1.06,0,Math.PI*2);ctx.fill();ctx.stroke()}
+  const plaza=images["P/Plazas/plaza.png"]?"P/Plazas/plaza.png":baseArt("fountain_plaza.png",null);
+  if(plaza&&images[plaza])drawImageCentered(plaza,b.cx,b.cy,u*2.25,u*1.7);
 
-  // Perimeter uses new coherent wall kit.
-  const wall=baseArt("wall_straight.png","wall_2.png"),corner=baseArt("wall_corner.png","wall_4.png"),gate=baseArt("base_gate.png","base_gate.png");
-  const top=b.top+u*.08,bottom=b.bottom-u*.12,left=b.left+u*.12,right=b.right-u*.12;
-  for(let x=left+u*.55;x<right-u*.4;x+=u*.98)drawImageCentered(wall,x,top,u, u*.55);
-  for(let x=left+u*.55;x<right-u*.4;x+=u*.98){if(Math.abs(x-b.cx)>u*1.35)drawImageCentered(wall,x,bottom,u,u*.55)}
-  for(let y=top+u*.8;y<bottom-u*.5;y+=u*.88){
-    ctx.save();ctx.translate(left,y);ctx.rotate(Math.PI/2);const im=images[wall];if(im){const s=Math.min(u/im.width,(u*.55)/im.height);ctx.drawImage(im,-im.width*s/2,-im.height*s/2,im.width*s,im.height*s)}ctx.restore();
-    ctx.save();ctx.translate(right,y);ctx.rotate(Math.PI/2);const im2=images[wall];if(im2){const s2=Math.min(u/im2.width,(u*.55)/im2.height);ctx.drawImage(im2,-im2.width*s2/2,-im2.height*s2/2,im2.width*s2,im2.height*s2)}ctx.restore();
-  }
-  drawImageCentered(gate,b.cx,bottom+u*.15,u*2.1,u*1.05);
+  const wall=baseArt("wall_straight.png","wall_2.png"),wc=baseArt("wall_corner.png","wall_4.png"),tower=baseArt("wall_tower.png",null),gate=baseArt("base_gate.png","base_gate.png");
+  const top=b.top+u*.08,bottom=b.bottom-u*.11,left=b.left+u*.11,right=b.right-u*.11;
+  for(let x=left+u*.55;x<right-u*.45;x+=u*.94)drawImageCentered(wall,x,top,u*.98,u*.52);
+  for(let x=left+u*.55;x<right-u*.45;x+=u*.94){if(Math.abs(x-b.cx)>u*1.25)drawImageCentered(wall,x,bottom,u*.98,u*.52)}
+  for(let y=top+u*.75;y<bottom-u*.45;y+=u*.86){drawRotated(wall,left,y,u*.98,u*.52,Math.PI/2);drawRotated(wall,right,y,u*.98,u*.52,Math.PI/2);}
+  if(wc&&images[wc]){drawImageCentered(wc,left,top,u*.82,u*.82);drawRotated(wc,right,top,u*.82,u*.82,Math.PI/2);drawRotated(wc,left,bottom,u*.82,u*.82,-Math.PI/2);drawRotated(wc,right,bottom,u*.82,u*.82,Math.PI);}
+  if(tower&&images[tower]){drawImageCentered(tower,left+u*.25,top+u*.35,u*.72,u*1.0);drawImageCentered(tower,right-u*.25,top+u*.35,u*.72,u*1.0);}
+  drawImageCentered(gate,b.cx,bottom+u*.14,u*2.25,u*1.12);
 
-  // Empty plots use the dedicated build-pad sprite.
   getBuildPlots().forEach(function(p){
     if(p.id==="hq"||buildings.some(function(bb){return bb.plotId===p.id}))return;
-    const pad=baseArt("build_pad.png",null);
+    const pad=images["P/Plazas/build_pad.png"]?"P/Plazas/build_pad.png":baseArt("build_pad.png",null);
     if(pad&&images[pad])drawImageCentered(pad,p.x,p.y,u*.95,u*.72);
-    else{ctx.fillStyle="rgba(223,216,202,.9)";ctx.strokeStyle="#777168";ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(p.x-u*.44,p.y-u*.33,u*.88,u*.66,12);ctx.fill();ctx.stroke()}
-    ctx.fillStyle="rgba(50,49,45,.78)";ctx.font="bold 9px Arial";ctx.textAlign="center";ctx.fillText("BUILD",p.x,p.y+4);
+    ctx.fillStyle="rgba(40,38,34,.74)";ctx.font="bold 9px Arial";ctx.textAlign="center";ctx.fillText("BUILD",p.x,p.y+4);
   });
+
+  // Dedicated landing/parking puzzle pieces.
+  const landing=images["P/Plazas/landing_pad.png"]?"P/Plazas/landing_pad.png":null;
+  const parking=images["P/Plazas/parking_pad.png"]?"P/Plazas/parking_pad.png":null;
+  if(landing)drawImageCentered(landing,b.cx-4.25*u,b.cy+2.75*u,u*1.55,u*1.1);
+  if(parking)drawImageCentered(parking,b.cx+3.25*u,b.cy+2.55*u,u*1.35,u*.95);
+
   ctx.restore();
 }
 function drawProps(){
   const b=baseGeometry(),u=Math.min(b.w/12,b.h/8);
-  const planter=baseArt("garden_planter.png","planter_1.png"),crates=baseArt("cargo_crates.png","resource_crate.png");
-  [
-    [-1.25,-.9],[1.25,-.9],[-1.25,.95],[1.25,.95],[-.55,-2.8],[.55,-2.8]
-  ].forEach(function(p){drawImageCentered(planter,b.cx+p[0]*u,b.cy+p[1]*u,u*.55,u*.55)});
-  drawImageCentered(crates,b.cx-4.75*u,b.cy+2.65*u,u*.68,u*.55);
-  drawImageCentered(crates,b.cx+4.55*u,b.cy+2.5*u,u*.68,u*.55);
+  const planter=images["P/Decor/planter.png"]?"P/Decor/planter.png":baseArt("garden_planter.png","planter_1.png");
+  const fountain=images["P/Decor/fountain.png"]?"P/Decor/fountain.png":null;
+  const light=images["P/Decor/light.png"]?"P/Decor/light.png":null;
+  const crate=images["P/Decor/crate.png"]?"P/Decor/crate.png":baseArt("cargo_crates.png","resource_crate.png");
+  const terminal=images["P/Decor/terminal.png"]?"P/Decor/terminal.png":"terminal.png";
+
+  [[-1.35,-.85],[1.35,-.85],[-1.35,.85],[1.35,.85],[-.7,-2.75],[.7,-2.75],[-.7,2.75],[.7,2.75]].forEach(function(p){
+    drawImageCentered(planter,b.cx+p[0]*u,b.cy+p[1]*u,u*.48,u*.48);
+  });
+  if(fountain)drawImageCentered(fountain,b.cx,b.cy+u*.78,u*.86,u*.86);
+  [[-2.1,-.15],[2.1,-.15],[-2.1,1.05],[2.1,1.05],[-.65,-3.0],[.65,-3.0]].forEach(function(p){
+    if(light)drawImageCentered(light,b.cx+p[0]*u,b.cy+p[1]*u,u*.32,u*.62);
+  });
+  drawImageCentered(crate,b.cx-4.65*u,b.cy+2.5*u,u*.6,u*.5);
+  drawImageCentered(crate,b.cx+4.5*u,b.cy+2.38*u,u*.6,u*.5);
+  drawImageCentered(terminal,b.cx+1.0*u,b.cy+.55*u,u*.42,u*.56);
 }
 function drawBuildings(){
   const plots=getBuildPlots();
