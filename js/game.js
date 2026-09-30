@@ -11,6 +11,7 @@ const puzzleFiles={
   "P/Roads/road_t.png":ROAD_ASSET+"road_t.png",
   "P/Roads/road_cross.png":ROAD_ASSET+"road_cross.png",
   "P/Roads/road_end.png":ROAD_ASSET+"road_end.png",
+  "P/Walls/wall_straight_custom.png":WALL_ASSET+"wall_straight_custom.png",
   "P/Walls/wall_straight.png":WALL_ASSET+"wall_straight.png",
   "P/Walls/wall_corner.png":WALL_ASSET+"wall_corner.png",
   "P/Walls/wall_tower.png":WALL_ASSET+"wall_tower.png",
@@ -428,7 +429,7 @@ document.getElementById("menuBtn").onclick=function(){document.getElementById("c
 document.getElementById("closeCatalog").onclick=function(){document.getElementById("catalog").classList.add("hidden")};
 
 function fortSprite(type){
-  if(type==="wall")return images["P/Walls/wall_straight.png"]?"P/Walls/wall_straight.png":baseArt("wall_straight.png","wall_2.png");
+  if(type==="wall")return images["P/Walls/wall_straight_custom.png"]?"P/Walls/wall_straight_custom.png":(images["P/Walls/wall_straight.png"]?"P/Walls/wall_straight.png":baseArt("wall_straight.png","wall_2.png"));
   if(type==="corner")return images["P/Walls/wall_corner.png"]?"P/Walls/wall_corner.png":baseArt("wall_corner.png","wall_4.png");
   if(type==="tower")return images["P/Walls/wall_tower.png"]?"P/Walls/wall_tower.png":baseArt("wall_tower.png",null);
   if(type==="gate")return images["P/Walls/gate.png"]?"P/Walls/gate.png":baseArt("base_gate.png","base_gate.png");
@@ -484,6 +485,31 @@ document.querySelectorAll(".fort-tool").forEach(function(btn){
 document.getElementById("rotateFortBtn").onclick=function(){fortRotation=(fortRotation+90)%360;refreshFortStatus()};
 document.getElementById("eraseFortBtn").onclick=function(){fortErase=!fortErase;document.getElementById("eraseFortBtn").classList.toggle("active",fortErase);refreshFortStatus()};
 document.getElementById("clearFortBtn").onclick=function(){fortPieces.length=0;refreshLayoutOutput();statusEl.textContent="Custom fort cleared."};
+
+function applySavedLayout(layout){
+  if(!layout)return false;
+  const b=baseGeometry();
+  if(Array.isArray(layout.buildings)){
+    buildings.length=0;
+    layout.buildings.forEach(function(x){
+      const cx=(typeof x.nx==="number")?b.left+x.nx*b.w:x.x;
+      const cy=(typeof x.ny==="number")?b.top+x.ny*b.h:x.y;
+      buildings.push({type:x.type,level:x.level||1,plotId:null,x:cx-GRID/2,y:cy-GRID/2});
+    });
+  }
+  if(Array.isArray(layout.fort)){
+    fortPieces.length=0;
+    layout.fort.forEach(function(p){
+      fortPieces.push({
+        type:p.type,
+        x:(typeof p.nx==="number")?b.left+p.nx*b.w:p.x,
+        y:(typeof p.ny==="number")?b.top+p.ny*b.h:p.y,
+        rotation:p.rotation||0
+      });
+    });
+  }
+  return true;
+}
 
 function exportLayoutData(){
   const b=baseGeometry();
@@ -604,5 +630,5 @@ canvas.addEventListener("pointerdown",function(e){
 
 function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
-resizeCanvas();seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
+resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop)});
