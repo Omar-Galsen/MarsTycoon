@@ -453,8 +453,22 @@ function drawBaseInfrastructure(){
   }
   if(fortPieces.length>0)drawCustomFort();
 
+  // south gate threshold
+  if(gameMode==="base"){
+    ctx.save();
+    ctx.fillStyle="rgba(54,58,58,.72)";
+    ctx.fillRect(b.cx-u*.52,b.bottom-u*.34,u*1.04,u*.40);
+    ctx.strokeStyle="rgba(240,197,94,.55)";
+    ctx.lineWidth=2;
+    ctx.strokeRect(b.cx-u*.52,b.bottom-u*.34,u*1.04,u*.40);
+    ctx.restore();
+  }
+
   // build pads snap directly beside roads
   getBuildPlots().forEach(function(p){
+    const militaryY=b.bottom-u*1.58;
+    const tooCloseToMilitary=Math.abs(p.x-b.cx)<u*2.15&&Math.abs(p.y-militaryY)<u*1.35;
+    if(tooCloseToMilitary)return;
     if(p.id==="hq"||buildings.some(function(bb){return bb.plotId===p.id}))return;
     const pad=images["P/Plazas/build_pad.png"]?"P/Plazas/build_pad.png":baseArt("build_pad.png",null);
     if(pad&&images[pad]) drawImageCentered(pad,p.x,p.y,u*1.45,u*1.08);
@@ -575,60 +589,85 @@ function updateRaidScheduler(dt){
 function drawMilitaryDeploymentZone(){
   if(gameMode!=="base")return;
   const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
-  const y=b.bottom-u*.88;
 
-  // Reinforced military staging pad directly inside the south gate.
+  // Move the yard upward and make it wider so it is not crowded against the wall/UI.
+  const y=b.bottom-u*1.58;
+  const yardW=u*4.35;
+  const yardH=u*1.55;
+
   const parking=images["P/Plazas/parking_pad.png"]?"P/Plazas/parking_pad.png":null;
   const landing=images["P/Plazas/landing_pad.png"]?"P/Plazas/landing_pad.png":null;
-  if(parking) drawImageCentered(parking,b.cx,y,u*3.05,u*1.45);
-  else if(landing) drawImageCentered(landing,b.cx,y,u*3.05,u*1.45);
+  if(parking) drawImageCentered(parking,b.cx,y,yardW,yardH);
+  else if(landing) drawImageCentered(landing,b.cx,y,yardW,yardH);
 
   ctx.save();
-  ctx.fillStyle="rgba(15,19,22,.78)";
-  ctx.strokeStyle="rgba(240,197,94,.65)";
+
+  // Clean military pad frame.
+  ctx.fillStyle="rgba(15,19,22,.18)";
+  ctx.strokeStyle="rgba(240,197,94,.68)";
   ctx.lineWidth=2;
   ctx.beginPath();
-  ctx.roundRect(b.cx-u*1.58,y-u*.72,u*3.16,u*1.44,14);
-  ctx.stroke();
+  ctx.roundRect(b.cx-yardW*.50,y-yardH*.50,yardW,yardH,16);
+  ctx.fill();ctx.stroke();
 
-  // Checkpoint lane running straight to the south gate.
-  ctx.fillStyle="rgba(54,58,58,.72)";
-  ctx.fillRect(b.cx-u*.34,y+u*.42,u*.68,u*.58);
-  ctx.strokeStyle="rgba(240,197,94,.55)";
-  ctx.setLineDash([8,7]);
-  ctx.beginPath();ctx.moveTo(b.cx,y+u*.43);ctx.lineTo(b.cx,y+u*.96);ctx.stroke();
+  // Center exit lane stays completely clear.
+  ctx.fillStyle="rgba(58,62,62,.72)";
+  ctx.fillRect(b.cx-u*.38,y+u*.18,u*.76,u*1.45);
+  ctx.strokeStyle="rgba(240,197,94,.58)";
+  ctx.setLineDash([9,8]);
+  ctx.beginPath();
+  ctx.moveTo(b.cx,y+u*.26);
+  ctx.lineTo(b.cx,y+u*1.53);
+  ctx.stroke();
   ctx.setLineDash([]);
 
   // Deployment label.
-  ctx.fillStyle="rgba(10,13,16,.82)";
-  ctx.beginPath();ctx.roundRect(b.cx-u*.83,y-u*.72,u*1.66,u*.28,8);ctx.fill();
+  ctx.fillStyle="rgba(10,13,16,.88)";
+  ctx.beginPath();
+  ctx.roundRect(b.cx-u*.92,y-yardH*.50-u*.06,u*1.84,u*.30,8);
+  ctx.fill();
   ctx.fillStyle="#ffd174";
   ctx.font="bold 9px Arial";
   ctx.textAlign="center";
   ctx.textBaseline="middle";
-  ctx.fillText("MILITARY DEPLOYMENT",b.cx,y-u*.58);
+  ctx.fillText("MILITARY DEPLOYMENT",b.cx,y-yardH*.50+u*.09);
 
+  // Left/right vehicle bay labels.
+  ctx.fillStyle="rgba(0,0,0,.52)";
+  ctx.fillRect(b.cx-u*1.92,y-u*.55,u*.84,u*.18);
+  ctx.fillRect(b.cx+u*1.08,y-u*.55,u*.84,u*.18);
+  ctx.fillStyle="#c9d0d3";
+  ctx.font="bold 7px Arial";
+  ctx.fillText("VEHICLE BAY",b.cx-u*1.50,y-u*.46);
+  ctx.fillText("MUSTER",b.cx+u*1.50,y-u*.46);
   ctx.restore();
 
-  // Parked convoy vehicles.
-  drawRotated("transport_rover.png",b.cx-u*.72,y-u*.02,u*.92,u*.58,-Math.PI/2);
-  drawRotated("rover.png",b.cx-u*.06,y-u*.08,u*.72,u*.50,-Math.PI/2);
-  drawRotated("rover.png",b.cx+u*.58,y-u*.03,u*.72,u*.50,-Math.PI/2);
+  // Vehicles are spread left / center / right instead of stacked.
+  drawRotated("transport_rover.png",b.cx-u*1.30,y-u*.04,u*.98,u*.60,-Math.PI/2);
+  drawRotated("rover.png",b.cx-u*.02,y-u*.10,u*.76,u*.52,-Math.PI/2);
+  drawRotated("rover.png",b.cx+u*1.30,y-u*.04,u*.76,u*.52,-Math.PI/2);
 
-  // Mustered soldiers use the generated Mars marine sprite.
+  // Soldiers in two tidy rows on the right half.
   if(images["mars_soldier.png"]){
-    [-.82,-.50,.48,.80].forEach(function(dx,i){
-      drawImageCentered("mars_soldier.png",b.cx+dx*u,y+u*.47,u*.34,u*.34);
+    [
+      [.78,.28],[1.08,.28],[1.38,.28],
+      [.92,.58],[1.22,.58]
+    ].forEach(function(pos){
+      drawImageCentered("mars_soldier.png",b.cx+pos[0]*u,y+pos[1]*u,u*.31,u*.31);
     });
   }
 
-  // Supply / command props.
-  drawImageCentered("resource_crate.png",b.cx-u*1.26,y+u*.34,u*.35,u*.35);
-  drawImageCentered("supply_box.png",b.cx+u*1.24,y+u*.34,u*.34,u*.34);
-  drawImageCentered("terminal.png",b.cx+u*1.28,y-u*.34,u*.30,u*.30);
-  drawImageCentered("lamp_post.png",b.cx-u*1.48,y-u*.22,u*.30,u*.44);
-  drawImageCentered("lamp_post.png",b.cx+u*1.48,y-u*.22,u*.30,u*.44);
+  // Supplies stay on the outer edges, leaving center path open.
+  drawImageCentered("resource_crate.png",b.cx-u*1.90,y+u*.48,u*.32,u*.32);
+  drawImageCentered("supply_box.png",b.cx-u*1.58,y+u*.48,u*.31,u*.31);
+  drawImageCentered("terminal.png",b.cx+u*1.82,y+u*.48,u*.28,u*.28);
+
+  // Guard posts / floodlights frame the gate approach.
+  drawImageCentered("lamp_post.png",b.cx-u*.92,y+u*.62,u*.27,u*.43);
+  drawImageCentered("lamp_post.png",b.cx+u*.92,y+u*.62,u*.27,u*.43);
 }
+
+
 
 function drawProps(){
   const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
@@ -814,7 +853,7 @@ function fortSprite(type,sprite){
 function fortSize(type){
   const u=Math.min(baseGeometry().w/11.5,baseGeometry().h/7.6);
   if(type==="tower")return {w:u*1.0,h:u*1.5};
-  if(type==="gate")return {w:u*2.2,h:u*1.25};
+  if(type==="gate")return {w:u*3.4,h:u*1.25};
   if(type==="corner")return {w:u*1.15,h:u*1.15};
   return {w:u*1.2,h:u*.7};
 }
