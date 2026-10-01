@@ -63,6 +63,20 @@ const expeditionArmy={
 };
 const combatProjectiles=[];
 const combatExplosions=[];
+let combatAnimationTime=0;
+function beginAttack(actor,tx,ty){
+  actor.attackAnimation=.24;
+  actor.attackTarget={x:tx,y:ty};
+}
+function drawAttackFlash(actor,x,y){
+  if(!(actor.attackAnimation>0)||!actor.attackTarget)return;
+  const angle=Math.atan2(actor.attackTarget.y-y,actor.attackTarget.x-x);
+  const t=actor.attackAnimation/.24;
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+  ctx.globalAlpha=t;ctx.fillStyle="#fff3a1";ctx.shadowColor="#ffc44d";ctx.shadowBlur=12;
+  ctx.beginPath();ctx.moveTo(17,0);ctx.lineTo(25,-5*t);ctx.lineTo(33,0);ctx.lineTo(25,5*t);ctx.closePath();ctx.fill();
+  ctx.restore();
+}
 
 const GAME_SAVE_KEY="marsTycoonSaveV2";
 const campaign={
@@ -691,6 +705,7 @@ function updateColonyDefenseAI(dt){
     const range=Math.hypot(threat.enemy.x-d.x,threat.enemy.y-d.y);
     if(range<300&&d.cooldown<=0){
       const damage=15+researchState.military*4;
+      beginAttack(d,threat.enemy.x,threat.enemy.y);
       spawnTracer(d.x,d.y-8,threat.enemy.x,threat.enemy.y,false);
       threat.enemy.hp=Math.max(0,threat.enemy.hp-damage);
       if(threat.enemy.hp<=0){
@@ -818,6 +833,7 @@ function drawColonyDefenders(){
     else{
       ctx.save();ctx.fillStyle="#5d7654";ctx.beginPath();ctx.arc(d.x,d.y-7,5,0,Math.PI*2);ctx.fill();ctx.fillRect(d.x-5,d.y-2,10,16);ctx.restore();
     }
+    drawAttackFlash(d,d.x,d.y-8);
     drawHealthBar(d.x,d.y-32,30,4,d.hp/d.maxHp,"#79d173");
   });
 }
@@ -1450,11 +1466,11 @@ function monsterAttackFrame(camp,x,y){
   const armyDist=Math.hypot(expeditionArmy.x-x,expeditionArmy.y-y);
   const playerDist=Math.hypot(expedition.x-x,expedition.y-y);
   const targetDist=Math.min(armyDist,playerDist);
-  const engaged=expeditionArmy.targetCamp===camp||targetDist<210;
+  const engaged=(expeditionArmy.targetCamp===camp&&armyDist<210)||playerDist<210;
   if(!engaged)return null;
 
   // 8-frame loop: wind-up -> slash -> recover -> repeat.
-  const frame=1+(Math.floor(performance.now()/110)%8);
+  const frame=1+(Math.floor(combatAnimationTime/.11)%8);
   return "Enemy/Attack/wild_monster_attack_"+String(frame).padStart(2,"0")+".png";
 }
 
@@ -1690,6 +1706,7 @@ function updateArmy(dt){
       spawnTracer(expeditionArmy.x+v.ox*.35,expeditionArmy.y+v.oy*.2,tx,ty,false);
     });
     liveS.slice(0,3).forEach(function(s){
+      beginAttack(s,tx,ty);
       spawnTracer(expeditionArmy.x+s.ox*.35,expeditionArmy.y+s.oy*.25,tx,ty,false);
     });
     target.hp=Math.max(0,target.hp-attackPower);
@@ -1747,7 +1764,11 @@ function drawArmyConvoy(){
     if(images["mars_soldier.png"]){
       const idle=!expeditionArmy.targetCamp&&expeditionArmy.moveSpeed<4;
       const size=idle?GRID*.50:GRID*.44;
-      drawImageCentered("mars_soldier.png",p.x,p.y-(idle?12:9),size,size);
+      const target=s.attackTarget;
+      const recoil=(s.attackAnimation||0)/.24*3;
+      const aim=target?Math.atan2(target.y-p.y,target.x-p.x):angle;
+      drawFacingImageCentered("mars_soldier.png",p.x-Math.cos(aim)*recoil,p.y-(idle?12:9)-Math.sin(aim)*recoil,size,size,target?target.x:p.x+fx);
+      drawAttackFlash(s,p.x,p.y-9);
       drawHealthBar(p.x,p.y-(idle?39:34),30,4,s.health/s.maxHealth,"#79d173");
     }else{
       ctx.save();
@@ -1778,6 +1799,10 @@ function spawnExplosion(x,y,size){
   combatExplosions.push({x:x,y:y,life:.55,maxLife:.55,size:size||28});
 }
 function updateCombatFx(dt){
+  combatAnimationTime+=dt;
+  expeditionArmy.soldiers.concat(baseRaid.defenders).forEach(function(actor){
+    actor.attackAnimation=Math.max(0,(actor.attackAnimation||0)-dt);
+  });
   for(let i=combatProjectiles.length-1;i>=0;i--){
     const p=combatProjectiles[i];
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
