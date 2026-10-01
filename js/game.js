@@ -2,8 +2,9 @@ const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 const statusEl=document.getElementById("status");
 const buildMenu=document.getElementById("buildMenu");
-const GRID=96,ASSET="Assets/sprites/",BASE_ASSET="Assets/sprites/BaseBuilder/",ROAD_ASSET=BASE_ASSET+"Roads/",WALL_ASSET=BASE_ASSET+"Walls/",PLAZA_ASSET=BASE_ASSET+"Plazas/",DECOR_ASSET=BASE_ASSET+"Decor/";
+const GRID=96,ASSET="Assets/sprites/",BASE_ASSET="Assets/sprites/BaseBuilder/",ENEMY_ASSET=ASSET+"Enemy/",ROAD_ASSET=BASE_ASSET+"Roads/",WALL_ASSET=BASE_ASSET+"Walls/",PLAZA_ASSET=BASE_ASSET+"Plazas/",DECOR_ASSET=BASE_ASSET+"Decor/";
 const spriteFiles=["mars_base_background.png","mars_soldier.png","barrel.png","colonist_1.png","colonist_2.png","colonist_3.png","colonist_4.png","colonist_5.png","crater_large.png","crater_small.png","drone_large.png","drone_small.png","dune_small.png","flag.png","habitat.png","habitat_small.png","ice_deposit.png","iron_ore.png","lamp_post.png","life_support_tower.png","miner.png","oxygen_plant.png","plant_rock_cluster.png","plants_cluster.png","radio_tower.png","rare_minerals.png","regolith.png","resource_crate.png","ridge_1.png","ridge_2.png","robot_worker.png","rock_small_1.png","rock_small_2.png","rock_spire.png","rocket_export.png","rocks_mid.png","rover.png","satellite_dish.png","solar_array_large.png","solar_panel.png","spire_cluster.png","storage.png","storage_large.png","supply_box.png","tank_station_1.png","tank_station_2.png","terminal.png","terrain_1_1.png","terrain_1_2.png","terrain_1_3.png","terrain_1_4.png","terrain_1_5.png","terrain_2_1.png","terrain_2_2.png","terrain_2_3.png","terrain_2_4.png","terrain_2_5.png","terrain_3_1.png","terrain_3_2.png","terrain_3_3.png","terrain_3_4.png","terrain_3_5.png","ui_build_button.png","ui_demolish_button.png","ui_fast_button.png","ui_health_bars.png","ui_menu_button.png","ui_pause_button.png","ui_resources_panel.png","ui_selection.png","ui_sell_button.png","ui_settings_button.png","ui_upgrade_button.png","water_extractor.png","wind_sensor.png","command_center.png","base_gate.png","greenhouse_1.png","greenhouse_2.png","planter_1.png","planter_2.png","refinery.png","rover_garage.png","road_tile_1.png","road_tile_2.png","wall_1.png","wall_2.png","wall_3.png","wall_4.png","ore_crate.png","transport_rover.png"];
+const enemyFiles=["wild_monster.png"];
 const baseBuilderFiles=["command_center.png","habitat_dome_small.png","habitat_dome_large.png","water_processing_complex.png","solar_power_station.png","life_support_complex.png","greenhouse_complex.png","storage_warehouse.png","industrial_refinery.png","satellite_comms_center.png","rover_garage.png","landing_pad.png","base_gate.png","wall_tower.png","wall_straight.png","wall_corner.png","road_straight.png","road_corner.png","road_cross.png","build_pad.png","garden_planter.png","fountain_plaza.png","exploration_rover.png","astronaut.png","utility_drone.png","cargo_crates.png"];
 const puzzleFiles={
   "P/Roads/road_straight.png":ROAD_ASSET+"road_straight.png",
@@ -30,6 +31,7 @@ const images={};let loadedCount=0;
 function loadOne(key,url){return new Promise(function(resolve){const img=new Image();img.onload=function(){images[key]=img;loadedCount++;statusEl.textContent="Loading colony art…";resolve()};img.onerror=function(){resolve()};img.src=url})}
 function loadSprites(){
   const jobs=spriteFiles.map(function(file){return loadOne(file,ASSET+file)});
+  enemyFiles.forEach(function(file){jobs.push(loadOne("Enemy/"+file,ENEMY_ASSET+file))});
   baseBuilderFiles.forEach(function(file){jobs.push(loadOne("BB/"+file,BASE_ASSET+file))});
   Object.keys(puzzleFiles).forEach(function(key){jobs.push(loadOne(key,puzzleFiles[key]))});
   return Promise.all(jobs);
@@ -1313,11 +1315,11 @@ document.getElementById("downloadLayoutBtn").onclick=downloadLayoutData;
 
 const sectorFactions={
   1:{name:"Mars Raiders",tag:"RAIDERS",unitColor:"#6d3b36",dark:"#21191a",accent:"#d95b42",reward:1.00,
-     camps:["Raider Camp Alpha","Raider Camp Beta","Raider Camp Gamma"],patrolSpeed:1.00,patrolDamage:1.00},
+     camps:["Wild Beast Alpha","Wild Beast Beta","Wild Beast Gamma"],patrolSpeed:1.00,patrolDamage:1.00},
   2:{name:"Red Horizon",tag:"RED HORIZON",unitColor:"#7a2d2b",dark:"#271416",accent:"#ff6b50",reward:1.25,
-     camps:["Red Horizon Outpost","Red Horizon Bastion","Red Horizon Armor Depot"],patrolSpeed:.92,patrolDamage:1.25},
+     camps:["Crimson Stalker","Crimson Mauler","Crimson Alpha Beast"],patrolSpeed:.92,patrolDamage:1.25},
   3:{name:"Helios Corporation",tag:"HELIOS CORP",unitColor:"#344b62",dark:"#101820",accent:"#6fc7ff",reward:1.55,
-     camps:["Helios Relay Site","Helios Drone Works","Helios Command Vault"],patrolSpeed:1.12,patrolDamage:1.45}
+     camps:["Toxic Spineshell","Toxic Brood Beast","Toxic Prime"],patrolSpeed:1.12,patrolDamage:1.45}
 };
 function sectorName(n){
   return ["","Frontier Basin","Crimson Highlands","Valles Warzone"][n]||("Sector "+n);
@@ -1398,13 +1400,13 @@ const outsideNodes=[
   {type:"rare",sprite:"rare_minerals.png",x:.52,y:.20,amount:10,active:true}
 ];
 const outsideEnemyCamps=[
-  {x:.17,y:.18,size:1.0,name:"Raider Camp Alpha",faction:"Mars Raiders",health:120,maxHealth:120,active:true,units:[
+  {x:.17,y:.18,size:1.0,name:"Wild Beast Alpha",faction:"Mars Raiders",health:120,maxHealth:120,active:true,units:[
     {ox:-46,oy:38,hp:40,maxHp:40,cooldown:0},{ox:44,oy:32,hp:40,maxHp:40,cooldown:0},{ox:0,oy:58,hp:55,maxHp:55,cooldown:0}
   ]},
-  {x:.80,y:.30,size:1.12,name:"Raider Camp Beta",faction:"Mars Raiders",health:150,maxHealth:150,active:true,units:[
+  {x:.80,y:.30,size:1.12,name:"Wild Beast Beta",faction:"Mars Raiders",health:150,maxHealth:150,active:true,units:[
     {ox:-52,oy:36,hp:45,maxHp:45,cooldown:0},{ox:48,oy:40,hp:45,maxHp:45,cooldown:0},{ox:0,oy:62,hp:60,maxHp:60,cooldown:0}
   ]},
-  {x:.68,y:.76,size:.96,name:"Raider Camp Gamma",faction:"Mars Raiders",health:110,maxHealth:110,active:true,units:[
+  {x:.68,y:.76,size:.96,name:"Wild Beast Gamma",faction:"Mars Raiders",health:110,maxHealth:110,active:true,units:[
     {ox:-42,oy:34,hp:35,maxHp:35,cooldown:0},{ox:38,oy:30,hp:35,maxHp:35,cooldown:0}
   ]}
 ];
@@ -1439,7 +1441,7 @@ function drawEnemyCamp(camp){
   const faction=currentFaction();
   ctx.fillStyle=campaign.selectedSector===3?"rgba(28,53,72,.40)":(campaign.selectedSector===2?"rgba(92,24,22,.42)":"rgba(82,24,18,.38)");
   ctx.beginPath();ctx.ellipse(x,y+18,s*.92,s*.48,0,0,Math.PI*2);ctx.fill();
-  drawImageCentered(images["BB/habitat_dome_small.png"]?"BB/habitat_dome_small.png":"habitat_small.png",x,y,s*1.45,s*1.15);
+  drawImageCentered(images["Enemy/wild_monster.png"]?"Enemy/wild_monster.png":"habitat_small.png",x,y,s*1.55,s*1.35);
   drawImageCentered("resource_crate.png",x-s*.55,y+s*.24,s*.4,s*.4);
   drawImageCentered("barrel.png",x+s*.55,y+s*.20,s*.32,s*.32);
   liveCampUnits(camp).forEach(function(u){drawEnemyUnit(camp,u)});
