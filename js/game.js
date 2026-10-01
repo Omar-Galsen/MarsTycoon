@@ -43,6 +43,145 @@ let fortTool="wall",fortRotation=0,fortErase=false;
 const fortPieces=[];
 const expedition={x:innerWidth*0.5,y:innerHeight*0.5,targetX:null,targetY:null,cargo:0,capacity:40,suitOxygen:100,harvestCooldown:0};
 
+// ------------------------------------------------------------
+// FIRST-RUN TUTORIAL
+// ------------------------------------------------------------
+const TUTORIAL_STORAGE_KEY="marsTycoonTutorialCompleteV1";
+let tutorialIndex=0;
+let tutorialWasPaused=false;
+let tutorialResizeHandler=null;
+
+const tutorialSteps=[
+  {
+    title:"Welcome to Mars",
+    text:"You are in charge of a growing Mars colony. Keep resources stable, expand the base, and prepare expeditions beyond the perimeter.",
+    hint:"This training only appears on the first run. You can skip it at any time.",
+    target:".commander-card"
+  },
+  {
+    title:"Watch your resources",
+    text:"Credits pay for construction. Iron is a core building material. Water, oxygen, and power keep the colony operating, while population shows how many colonists you support.",
+    hint:"If life-support resources fall too low, expansion becomes harder.",
+    target:"#resources"
+  },
+  {
+    title:"Build the colony",
+    text:"Use the build bar to choose structures. Economy buildings improve production, life-support buildings keep colonists supplied, and utility buildings unlock support functions.",
+    hint:"Select a building card, then place it inside the colony.",
+    target:"#buildPanel"
+  },
+  {
+    title:"Follow colony goals",
+    text:"Colony Goals give you short objectives such as constructing buildings, upgrading structures, and increasing your resources.",
+    hint:"Completing these goals is a good way to learn the early game.",
+    target:"#missionPanel"
+  },
+  {
+    title:"Upgrade structures",
+    text:"Tap an existing building to open its management panel. Upgrades increase production, capacity, and Colony Power.",
+    hint:"The Command Hub also controls progression and unlocks higher-tier structures.",
+    target:".commander-card"
+  },
+  {
+    title:"Explore outside",
+    text:"Use the OUTSIDE button when you are ready to leave the base. Move across the terrain, collect ore and other resources, then return before your suit oxygen runs out.",
+    hint:"Your expedition cargo is deposited when you return to the colony.",
+    target:"#zoneSwitch"
+  },
+  {
+    title:"Training complete",
+    text:"Your colony is ready. Start by managing resources and expanding carefully, then use expeditions to bring valuable material back to the base.",
+    hint:"Good luck, Commander.",
+    target:null
+  }
+];
+
+function tutorialEls(){
+  return {
+    overlay:document.getElementById("tutorialOverlay"),
+    spot:document.getElementById("tutorialSpotlight"),
+    title:document.getElementById("tutorialTitle"),
+    text:document.getElementById("tutorialText"),
+    hint:document.getElementById("tutorialHint"),
+    progress:document.getElementById("tutorialProgressBar"),
+    back:document.getElementById("tutorialBackBtn"),
+    next:document.getElementById("tutorialNextBtn"),
+    skip:document.getElementById("tutorialSkipBtn")
+  };
+}
+
+function tutorialCompleted(){
+  try{return localStorage.getItem(TUTORIAL_STORAGE_KEY)==="1"}catch(e){return false}
+}
+function saveTutorialCompleted(){
+  try{localStorage.setItem(TUTORIAL_STORAGE_KEY,"1")}catch(e){}
+}
+function positionTutorialSpotlight(){
+  const e=tutorialEls(),step=tutorialSteps[tutorialIndex];
+  if(!e.spot||!step||!step.target){if(e.spot)e.spot.style.opacity="0";return}
+  const target=document.querySelector(step.target);
+  if(!target){e.spot.style.opacity="0";return}
+  const r=target.getBoundingClientRect(),pad=7;
+  e.spot.style.left=Math.max(4,r.left-pad)+"px";
+  e.spot.style.top=Math.max(4,r.top-pad)+"px";
+  e.spot.style.width=Math.max(20,Math.min(innerWidth-r.left+pad-4,r.width+pad*2))+"px";
+  e.spot.style.height=Math.max(20,Math.min(innerHeight-r.top+pad-4,r.height+pad*2))+"px";
+  e.spot.style.opacity="1";
+}
+function renderTutorial(){
+  const e=tutorialEls(),step=tutorialSteps[tutorialIndex];
+  if(!e.overlay||!step)return;
+  e.title.textContent=step.title;
+  e.text.textContent=step.text;
+  e.hint.textContent=step.hint||"";
+  e.progress.style.width=((tutorialIndex+1)/tutorialSteps.length*100)+"%";
+  e.back.disabled=tutorialIndex===0;
+  e.next.textContent=tutorialIndex===tutorialSteps.length-1?"START COLONY":"NEXT";
+  requestAnimationFrame(positionTutorialSpotlight);
+}
+function startTutorial(force){
+  if(!force&&tutorialCompleted())return;
+  const e=tutorialEls();
+  if(!e.overlay)return;
+  tutorialIndex=0;
+  tutorialWasPaused=paused;
+  paused=true;
+  document.body.classList.add("tutorial-open");
+  e.overlay.classList.remove("hidden");
+  e.overlay.setAttribute("aria-hidden","false");
+  tutorialResizeHandler=positionTutorialSpotlight;
+  window.addEventListener("resize",tutorialResizeHandler);
+  renderTutorial();
+}
+function finishTutorial(){
+  const e=tutorialEls();
+  if(!e.overlay)return;
+  saveTutorialCompleted();
+  e.overlay.classList.add("hidden");
+  e.overlay.setAttribute("aria-hidden","true");
+  document.body.classList.remove("tutorial-open");
+  if(tutorialResizeHandler)window.removeEventListener("resize",tutorialResizeHandler);
+  tutorialResizeHandler=null;
+  paused=tutorialWasPaused;
+  statusEl.textContent="Training complete. Build and expand your Mars colony.";
+}
+function skipTutorial(){finishTutorial()}
+function nextTutorial(){
+  if(tutorialIndex>=tutorialSteps.length-1){finishTutorial();return}
+  tutorialIndex++;
+  renderTutorial();
+}
+function previousTutorial(){
+  if(tutorialIndex<=0)return;
+  tutorialIndex--;
+  renderTutorial();
+}
+
+document.getElementById("tutorialNextBtn")?.addEventListener("click",nextTutorial);
+document.getElementById("tutorialBackBtn")?.addEventListener("click",previousTutorial);
+document.getElementById("tutorialSkipBtn")?.addEventListener("click",skipTutorial);
+
+
 const buildingData={
 command:{name:"Command Center",cost:500,sprite:"command_center.png",baseSprite:"command_center.png",size:1.85,category:"utility",unlock:1,baseProd:"Colony HQ",basePower:-2,capacity:0,score:300,placeable:false},
 greenhouse:{name:"Greenhouse",cost:320,sprite:"greenhouse_1.png",baseSprite:"greenhouse_complex.png",size:1.25,category:"life",unlock:1,baseProd:"Food +3/s",basePower:-2,capacity:35,score:125},
@@ -612,4 +751,4 @@ canvas.addEventListener("pointerdown",function(e){
 function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
-loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop)});
+loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop);setTimeout(function(){startTutorial(false)},250)});
