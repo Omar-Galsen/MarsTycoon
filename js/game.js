@@ -42,6 +42,7 @@ let layoutDragIndex=null,layoutDragOffsetX=0,layoutDragOffsetY=0;
 let fortTool="wall",fortRotation=0,fortErase=false;
 const fortPieces=[];
 const expedition={x:innerWidth*0.5,y:innerHeight*0.5,targetX:null,targetY:null,cargo:0,capacity:40,suitOxygen:100,harvestCooldown:0,health:100,attackCooldown:0};
+const expeditionArmy={x:innerWidth*.5,y:innerHeight*.9,targetCamp:null,speed:135,attackCooldown:0,health:220,maxHealth:220,active:true};
 
 // ------------------------------------------------------------
 // FIRST-RUN TUTORIAL
@@ -712,8 +713,8 @@ function setMode(mode){
   if(mode==="layout"){paused=true;selectedPlaced=null;hideSelectedPanel();refreshLayoutOutput();refreshFortStatus();statusEl.textContent="Layout mode: build the fort or switch to BUILDINGS to drag structures.";}
   else if(mode==="outside"){
     selectedPlaced=null;hideSelectedPanel();
-    expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;
-    statusEl.textContent="Tap the terrain to move. Approach ore deposits to collect them.";
+    expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.targetCamp=null;
+    statusEl.textContent="Tap terrain to move. Tap an enemy camp to dispatch the army convoy.";
   }else if(mode==="base"){
     paused=false;
     depositCargo();
@@ -785,34 +786,63 @@ function updateExpeditionHUD(){
 }
 function depositCargo(){
   if(expedition.cargo>0){colony.iron+=expedition.cargo;statusEl.textContent="Returned with "+Math.floor(expedition.cargo)+" ore.";expedition.cargo=0}
-  expedition.suitOxygen=100;expedition.health=100;resetOutsideNodes();updateHUD();updateExpeditionHUD();
+  expedition.suitOxygen=100;expedition.health=100;expeditionArmy.health=expeditionArmy.maxHealth;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.targetCamp=null;resetOutsideNodes();updateHUD();updateExpeditionHUD();
 }
-function damageCampAtPoint(x,y){
+function campAtPoint(x,y){
   let best=null,bestD=Infinity;
   outsideEnemyCamps.forEach(function(c){
     if(!c.active)return;
     const p=campScreenPos(c),d=Math.hypot(x-p.x,y-p.y);
-    if(d<130&&d<bestD){best=c;bestD=d}
+    if(d<145&&d<bestD){best=c;bestD=d}
   });
-  if(!best)return false;
-  if(expedition.attackCooldown>0)return true;
-  const units=liveCampUnits(best);
+  return best;
+}
+function dispatchArmyToCamp(camp){
+  if(!camp||!camp.active)return false;
+  expeditionArmy.targetCamp=camp;
+  expeditionArmy.active=true;
+  statusEl.textContent="Army convoy dispatched to "+camp.name+".";
+  return true;
+}
+function updateArmy(dt){
+  if(!expeditionArmy.active||!expeditionArmy.targetCamp)return;
+  const camp=expeditionArmy.targetCamp;
+  if(!camp.active){expeditionArmy.targetCamp=null;return}
+  const p=campScreenPos(camp),dx=p.x-expeditionArmy.x,dy=p.y-expeditionArmy.y,dist=Math.hypot(dx,dy);
+  if(dist>105){
+    expeditionArmy.x+=dx/dist*expeditionArmy.speed*dt;
+    expeditionArmy.y+=dy/dist*expeditionArmy.speed*dt;
+    statusEl.textContent="Army convoy moving to "+camp.name+".";
+    return;
+  }
+
+  if(expeditionArmy.attackCooldown>0)expeditionArmy.attackCooldown-=dt;
+  if(expeditionArmy.attackCooldown>0)return;
+
+  const units=liveCampUnits(camp);
   if(units.length){
     const target=units[0];
-    target.hp=Math.max(0,target.hp-22);
-    statusEl.textContent="Hit enemy guard at "+best.name+".";
+    target.hp=Math.max(0,target.hp-18);
+    statusEl.textContent="Army engaging guards at "+camp.name+".";
   }else{
-    best.health=Math.max(0,best.health-28);
-    statusEl.textContent="Attacking "+best.name+".";
-    if(best.health<=0){
-      best.active=false;
+    camp.health=Math.max(0,camp.health-24);
+    statusEl.textContent="Army attacking "+camp.name+".";
+    if(camp.health<=0){
+      camp.active=false;
       expedition.cargo=Math.min(expedition.capacity,expedition.cargo+18);
-      statusEl.textContent=best.name+" cleared. Salvaged 18 cargo.";
+      expeditionArmy.targetCamp=null;
+      statusEl.textContent=camp.name+" cleared by the army. Salvaged 18 cargo.";
       updateExpeditionHUD();
     }
   }
-  expedition.attackCooldown=.45;
-  return true;
+  expeditionArmy.attackCooldown=.55;
+}
+function drawArmyConvoy(){
+  if(gameMode!=="outside"||!expeditionArmy.active)return;
+  drawImageCentered("transport_rover.png",expeditionArmy.x,expeditionArmy.y,GRID*1.05,GRID*.72);
+  drawImageCentered("robot_worker.png",expeditionArmy.x-24,expeditionArmy.y+8,GRID*.28,GRID*.28);
+  drawImageCentered("robot_worker.png",expeditionArmy.x+24,expeditionArmy.y+8,GRID*.28,GRID*.28);
+  drawHealthBar(expeditionArmy.x,expeditionArmy.y-34,54,6,expeditionArmy.health/expeditionArmy.maxHealth,"#71c96a");
 }
 function nearestEnemyThreat(){
   let hit=null,best=Infinity;
@@ -837,7 +867,7 @@ function drawOutsideTerrain(){
   worldProps.slice(0,14).forEach(function(p,i){drawImageCentered(p.sprite,(p.x*1.3+i*37)%innerWidth,(p.y*1.1+i*23)%innerHeight,GRID*.5,GRID*.5)});
   outsideEnemyCamps.forEach(drawEnemyCamp);
   outsideNodes.forEach(function(n){if(n.active)drawImageCentered(n.sprite,n.x*innerWidth,n.y*innerHeight,GRID*1.25,GRID*1.25)});
-  drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawPlayerCombatHUD();drawImageCentered("transport_rover.png",innerWidth*.5,innerHeight*.9,GRID*1.2,GRID*.8);
+  drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawPlayerCombatHUD();drawArmyConvoy();
 }
 function updateOutside(dt){
   expedition.suitOxygen=Math.max(0,expedition.suitOxygen-dt*.75);
@@ -849,6 +879,7 @@ function updateOutside(dt){
   }
   if(expedition.harvestCooldown>0)expedition.harvestCooldown-=dt;
   if(expedition.attackCooldown>0)expedition.attackCooldown-=dt;
+  updateArmy(dt);
   const threat=nearestEnemyThreat();
   if(threat){
     const u=threat.unit;
@@ -856,15 +887,28 @@ function updateOutside(dt){
     if(threat.d<165){
       statusEl.textContent="Under fire near "+threat.camp.name+". Tap the camp to attack.";
       if(u.cooldown<=0){
-        expedition.health=Math.max(0,expedition.health-6);
-        u.cooldown=1.0+Math.random()*.5;
-        if(expedition.health<=0){
-          statusEl.textContent="Expedition defeated. Emergency return to base.";
-          expedition.health=100;
-          expedition.cargo=0;
-          setMode("base");
-          return;
+        const campPos=campScreenPos(threat.camp);
+        const armyNear=Math.hypot(expeditionArmy.x-campPos.x,expeditionArmy.y-campPos.y)<180;
+        if(armyNear&&expeditionArmy.targetCamp===threat.camp){
+          expeditionArmy.health=Math.max(0,expeditionArmy.health-7);
+          if(expeditionArmy.health<=0){
+            statusEl.textContent="Army convoy destroyed. Returning surviving forces.";
+            expeditionArmy.health=expeditionArmy.maxHealth;
+            expeditionArmy.x=innerWidth*.5;
+            expeditionArmy.y=innerHeight*.9;
+            expeditionArmy.targetCamp=null;
+          }
+        }else{
+          expedition.health=Math.max(0,expedition.health-6);
+          if(expedition.health<=0){
+            statusEl.textContent="Expedition defeated. Emergency return to base.";
+            expedition.health=100;
+            expedition.cargo=0;
+            setMode("base");
+            return;
+          }
         }
+        u.cooldown=1.0+Math.random()*.5;
       }
     }
   }
@@ -882,7 +926,7 @@ function updateOutside(dt){
 }
 const oldCanvasPointer=canvas.onpointerdown;
 canvas.addEventListener("pointerdown",function(e){
-  if(gameMode==="outside"){if(damageCampAtPoint(e.clientX,e.clientY))return;expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
+  if(gameMode==="outside"){const camp=campAtPoint(e.clientX,e.clientY);if(camp){dispatchArmyToCamp(camp);return}expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
 },true);
 
 function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
