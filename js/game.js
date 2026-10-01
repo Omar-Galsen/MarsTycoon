@@ -38,6 +38,23 @@ function loadSprites(){
   return Promise.all(jobs);
 }
 
+
+const OUTSIDE_WORLD={width:2400,height:1800};
+const outsideCamera={x:0,y:0,follow:"scout"};
+const outsideRegions=[
+ {name:"LANDING BASIN",x:.50,y:.84,color:"#a05b3b"},
+ {name:"RUST CANYON",x:.22,y:.53,color:"#743c2d"},
+ {name:"LOST RESEARCH ZONE",x:.64,y:.35,color:"#926449"},
+ {name:"ALIEN NEST",x:.82,y:.16,color:"#514539"}
+];
+function outsideHome(){return{x:OUTSIDE_WORLD.width*.5,y:OUTSIDE_WORLD.height*.84};}
+function updateOutsideCamera(){
+ const actor=outsideCamera.follow==="convoy"?expeditionArmy:expedition;
+ outsideCamera.x=Math.max(0,Math.min(Math.max(0,OUTSIDE_WORLD.width-innerWidth),actor.x-innerWidth/2));
+ outsideCamera.y=Math.max(0,Math.min(Math.max(0,OUTSIDE_WORLD.height-innerHeight),actor.y-innerHeight/2));
+}
+function outsidePoint(x,y){return{x:Math.max(25,Math.min(OUTSIDE_WORLD.width-25,x+outsideCamera.x)),y:Math.max(25,Math.min(OUTSIDE_WORLD.height-25,y+outsideCamera.y))};}
+
 const colony={credits:1500,iron:80,oil:40,water:80,oxygen:110,power:80,population:3,hqLevel:1};
 let selectedBuilding="miner",selectedPlaced=null,paused=false,speed=1,activeTab="economy",simulationAccumulator=0,lastTime=performance.now();
 let gameMode="base";
@@ -131,7 +148,7 @@ function researchCost(key){
 }
 function applyResearchBonuses(){
   expedition.capacity=40+researchState.exploration*10;
-  expeditionArmy.maxMoveSpeed=135*(1+researchState.exploration*.08);
+  expeditionArmy.maxMoveSpeed=190*(1+researchState.exploration*.08);
   baseRaid.gateMaxHealth=220+researchState.engineering*60;
   if(!baseRaid.active)baseRaid.gateHealth=baseRaid.gateMaxHealth;
 }
@@ -194,7 +211,7 @@ function saveGame(){
       defenders:baseRaid.defenders.map(function(d){const copy=Object.assign({},d);delete copy.target;return copy;})
     });
     localStorage.setItem(GAME_SAVE_KEY,JSON.stringify({
-      version:3,viewport:{w:innerWidth,h:innerHeight},
+      version:3,outsideWorld:OUTSIDE_WORLD,viewport:{w:innerWidth,h:innerHeight},
       colony:colony,campaign:campaign,research:researchState,
       buildings:buildings,fortPieces:fortPieces,
       expedition:expedition,army:army,armyCampIndex:outsideEnemyCamps.indexOf(expeditionArmy.targetCamp),
@@ -223,8 +240,8 @@ function loadGame(){
       function reposition(actor){if(typeof actor.x==="number")actor.x*=sx;if(typeof actor.y==="number")actor.y*=sy;if(typeof actor.homeX==="number")actor.homeX*=sx;if(typeof actor.homeY==="number")actor.homeY*=sy;}
       if(Array.isArray(data.buildings)){buildings.splice(0,buildings.length,...data.buildings.filter(function(b){return !!buildingData[b.type]}));buildings.forEach(function(b){if(!b.plotId)reposition(b)});syncBuildingsToPlots();}
       if(Array.isArray(data.fortPieces))fortPieces.splice(0,fortPieces.length,...data.fortPieces);
-      if(data.expedition){Object.assign(expedition,data.expedition);reposition(expedition);expedition.targetX=null;expedition.targetY=null;}
-      if(data.army){Object.assign(expeditionArmy,data.army);reposition(expeditionArmy);expeditionArmy.targetCamp=outsideEnemyCamps[data.armyCampIndex]||null;}
+      if(data.expedition){Object.assign(expedition,data.expedition);if(!data.outsideWorld){expedition.x=expedition.x/(data.viewport?.w||innerWidth)*OUTSIDE_WORLD.width;expedition.y=expedition.y/(data.viewport?.h||innerHeight)*OUTSIDE_WORLD.height;}expedition.targetX=null;expedition.targetY=null;}
+      if(data.army){Object.assign(expeditionArmy,data.army);if(!data.outsideWorld){expeditionArmy.x=expeditionArmy.x/(data.viewport?.w||innerWidth)*OUTSIDE_WORLD.width;expeditionArmy.y=expeditionArmy.y/(data.viewport?.h||innerHeight)*OUTSIDE_WORLD.height;}expeditionArmy.targetCamp=outsideEnemyCamps[data.armyCampIndex]||null;}
       if(data.raid){Object.assign(baseRaid,data.raid);baseRaid.enemies.forEach(function(e){reposition(e);e.attackVictim=baseRaid.defenders[e.attackVictimIndex]||null;e.attackFort=fortPieces[e.attackFortIndex]||null;delete e.attackFortIndex;delete e.attackVictimIndex;});baseRaid.defenders.forEach(function(d){reposition(d);d.target=null;});}
       if(data.battleActions)Object.assign(battleActions,data.battleActions);
       if(Array.isArray(data.nodes))data.nodes.forEach(function(n,i){if(outsideNodes[i])Object.assign(outsideNodes[i],n)});
@@ -1576,7 +1593,7 @@ function setMode(mode){
   else if(mode==="outside"){
     paused=false;
     selectedPlaced=null;hideSelectedPanel();
-    expedition.x=innerWidth*.5;expedition.y=innerHeight*.70;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.79;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();
+    expedition.x=outsideHome().x;expedition.y=outsideHome().y-70;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=outsideHome().x;expeditionArmy.y=outsideHome().y;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();
     statusEl.textContent="Tap terrain to move. Tap an enemy camp to deploy the military convoy and engage automatically.";
   }else if(mode==="base"){
     paused=false;
@@ -1594,19 +1611,19 @@ document.getElementById("returnBaseBtn").onclick=function(){setMode("base")};
 
 
 const explorationSites=[
-  {id:"ruin",name:"Research Ruin",sprite:"research_ruin.png",x:.38,y:.32,claimed:false,discovered:false},
-  {id:"outpost",name:"Mining Outpost",sprite:"mining_outpost.png",x:.60,y:.55,claimed:false,discovered:false},
-  {id:"cache",name:"Supply Cache",sprite:"supply_cache.png",x:.30,y:.65,claimed:false,discovered:false}
+  {id:"ruin",name:"Research Ruin",sprite:"research_ruin.png",x:.60,y:.35,claimed:false,discovered:false},
+  {id:"outpost",name:"Mining Outpost",sprite:"mining_outpost.png",x:.25,y:.56,claimed:false,discovered:false},
+  {id:"cache",name:"Supply Cache",sprite:"supply_cache.png",x:.45,y:.73,claimed:false,discovered:false}
 ];
 const exploredCells=new Set();
 function updateExplorationDiscoveries(){
   const scouts=[expedition,expeditionArmy].filter(function(a){return a===expedition||a.active});
   scouts.forEach(function(a){
-    const gx=Math.max(0,Math.min(31,Math.floor(a.x/innerWidth*32))),gy=Math.max(0,Math.min(23,Math.floor(a.y/innerHeight*24)));
+    const gx=Math.max(0,Math.min(31,Math.floor(a.x/OUTSIDE_WORLD.width*32))),gy=Math.max(0,Math.min(23,Math.floor(a.y/OUTSIDE_WORLD.height*24)));
     for(let y=Math.max(0,gy-1);y<=Math.min(23,gy+1);y++)for(let x=Math.max(0,gx-1);x<=Math.min(31,gx+1);x++)exploredCells.add(x+","+y);
   });
   explorationSites.forEach(function(site){
-    const x=site.x*innerWidth,y=site.y*innerHeight;
+    const x=site.x*OUTSIDE_WORLD.width,y=site.y*OUTSIDE_WORLD.height;
     const distance=Math.min.apply(null,scouts.map(function(a){return Math.hypot(a.x-x,a.y-y)}));
     if(distance<180)site.discovered=true;
     if(site.claimed||distance>65)return;
@@ -1620,7 +1637,7 @@ function updateExplorationDiscoveries(){
 function drawExplorationSites(){
   explorationSites.forEach(function(site){
     if(!site.discovered)return;
-    const x=site.x*innerWidth,y=site.y*innerHeight,size=site.id==="cache"?GRID*.72:GRID*1.4;
+    const x=site.x*OUTSIDE_WORLD.width,y=site.y*OUTSIDE_WORLD.height,size=site.id==="cache"?GRID*.72:GRID*1.4;
     drawImageCentered("Exploration/"+site.sprite,x,y,size,size);
     ctx.save();ctx.textAlign="center";ctx.font="bold 11px Arial";
     ctx.fillStyle="rgba(9,18,22,.9)";ctx.fillRect(x-88,y-size*.48-28,176,36);
@@ -1643,17 +1660,17 @@ const outsideNodes=[
   {type:"rare",sprite:"rare_minerals.png",x:.52,y:.20,amount:10,active:true}
 ];
 const outsideEnemyCamps=[
-  {x:.17,y:.18,size:1.0,name:"Wild Beast Alpha",faction:"Mars Raiders",health:120,maxHealth:120,active:true,units:[
+  {x:.22,y:.44,size:1.0,name:"Wild Beast Alpha",faction:"Mars Raiders",health:120,maxHealth:120,active:true,units:[
     {ox:-46,oy:38,hp:40,maxHp:40,cooldown:0},{ox:44,oy:32,hp:40,maxHp:40,cooldown:0},{ox:0,oy:58,hp:55,maxHp:55,cooldown:0}
   ]},
-  {x:.80,y:.30,size:1.12,name:"Wild Beast Beta",faction:"Mars Raiders",health:150,maxHealth:150,active:true,units:[
+  {x:.68,y:.28,size:1.12,name:"Wild Beast Beta",faction:"Mars Raiders",health:150,maxHealth:150,active:true,units:[
     {ox:-52,oy:36,hp:45,maxHp:45,cooldown:0},{ox:48,oy:40,hp:45,maxHp:45,cooldown:0},{ox:0,oy:62,hp:60,maxHp:60,cooldown:0}
   ]},
-  {x:.68,y:.76,size:.96,name:"Wild Beast Gamma",faction:"Mars Raiders",health:110,maxHealth:110,active:true,units:[
+  {x:.83,y:.15,size:.96,name:"Wild Beast Gamma",faction:"Mars Raiders",health:110,maxHealth:110,active:true,units:[
     {ox:-42,oy:34,hp:35,maxHp:35,cooldown:0},{ox:38,oy:30,hp:35,maxHp:35,cooldown:0}
   ]}
 ];
-function campScreenPos(c){return{x:c.x*innerWidth,y:c.y*innerHeight}}
+function campScreenPos(c){return{x:c.x*OUTSIDE_WORLD.width,y:c.y*OUTSIDE_WORLD.height}}
 function liveCampUnits(c){return c.units.filter(function(u){return u.hp>0})}
 function drawHealthBar(x,y,w,h,ratio,fill){
   ctx.save();ctx.fillStyle="rgba(8,10,12,.85)";ctx.fillRect(x-w/2,y,w,h);
@@ -1778,7 +1795,7 @@ function depositCargo(){
   colony.credits+=rare*20;
   statusEl.textContent="Expedition returned: +"+Math.floor(Math.max(0,cargo-ice-rare))+" iron, +"+(ice*2)+" water, +$"+(rare*20)+".";
   expedition.cargo=0;expedition.iceCargo=0;expedition.rareCargo=0;
-  expedition.suitOxygen=100;expedition.health=100;expeditionArmy.health=expeditionArmy.maxHealth;expeditionArmy.vehicles.forEach(function(v){v.health=v.maxHealth});expeditionArmy.soldiers.forEach(function(s){s.health=s.maxHealth});expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();updateHUD();updateExpeditionHUD();saveGame();
+  expedition.suitOxygen=100;expedition.health=100;expeditionArmy.health=expeditionArmy.maxHealth;expeditionArmy.vehicles.forEach(function(v){v.health=v.maxHealth});expeditionArmy.soldiers.forEach(function(s){s.health=s.maxHealth});expeditionArmy.x=outsideHome().x;expeditionArmy.y=outsideHome().y;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();updateHUD();updateExpeditionHUD();saveGame();
 }
 function resetEnemyPatrols(){
   enemyPatrolVehicles.forEach(function(v){
@@ -1847,7 +1864,7 @@ function updateEnemyPatrols(dt){
         expeditionArmy.health=expeditionArmy.maxHealth;
         expeditionArmy.vehicles.forEach(function(a){a.health=a.maxHealth});
         expeditionArmy.soldiers.forEach(function(a){a.health=a.maxHealth});
-        expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;
+        expeditionArmy.x=outsideHome().x;expeditionArmy.y=outsideHome().y;
         expeditionArmy.targetCamp=null;
         v.launched=false;
       }
@@ -2131,8 +2148,8 @@ function drawOutsideBasePreview(){
   // Show the player's colony as a distant miniature outpost in OUTSIDE mode.
   const b=baseGeometry();
   const scale=Math.max(.20,Math.min(.28,innerWidth/1900*.26));
-  const targetX=innerWidth*.50;
-  const targetY=innerHeight*.88;
+  const targetX=outsideHome().x;
+  const targetY=outsideHome().y;
 
   ctx.save();
   ctx.globalAlpha=.96;
@@ -2171,13 +2188,37 @@ function drawOutsideBasePreview(){
   ctx.restore();
 }
 
+
+const mapControls=document.createElement("div");
+mapControls.style.cssText="position:fixed;left:12px;bottom:130px;z-index:24;background:#101b22e8;border:1px solid #6b8a8e;border-radius:10px;padding:8px;color:#ffe0a0;";
+mapControls.innerHTML='<canvas id="outsideMinimap" width="192" height="144" style="display:block;width:192px;height:144px;max-width:35vw;touch-action:none"></canvas><button id="followScoutBtn">SCOUT</button> <button id="followArmyBtn">CONVOY</button>';
+document.body.appendChild(mapControls);
+const miniCanvas=document.getElementById("outsideMinimap"),miniCtx=miniCanvas.getContext("2d");
+document.getElementById("followScoutBtn").onclick=function(){outsideCamera.follow="scout"};
+document.getElementById("followArmyBtn").onclick=function(){outsideCamera.follow="convoy"};
+miniCanvas.addEventListener("pointerdown",function(e){
+ if(paused||gameMode!=="outside")return;
+ const r=miniCanvas.getBoundingClientRect();expedition.targetX=(e.clientX-r.left)/r.width*OUTSIDE_WORLD.width;expedition.targetY=(e.clientY-r.top)/r.height*OUTSIDE_WORLD.height;outsideCamera.follow="scout";e.stopPropagation();
+});
+function drawOutsideMinimap(){
+ miniCtx.fillStyle="#211a19";miniCtx.fillRect(0,0,192,144);
+ const sx=192/OUTSIDE_WORLD.width,sy=144/OUTSIDE_WORLD.height;
+ exploredCells.forEach(function(k){const cell=k.split(",").map(Number);miniCtx.fillStyle="#986342";miniCtx.fillRect(cell[0]*6,cell[1]*6,6,6)});
+ function dot(x,y,color,r){miniCtx.fillStyle=color;miniCtx.beginPath();miniCtx.arc(x*sx,y*sy,r||3,0,Math.PI*2);miniCtx.fill()}
+ dot(outsideHome().x,outsideHome().y,"#8be891",5);
+ explorationSites.forEach(function(p){if(p.discovered)dot(p.x*OUTSIDE_WORLD.width,p.y*OUTSIDE_WORLD.height,p.claimed?"#92df9d":"#ffd174")});
+ outsideEnemyCamps.forEach(function(c){const gx=Math.floor(c.x*32),gy=Math.floor(c.y*24);if(exploredCells.has(gx+","+gy))dot(c.x*OUTSIDE_WORLD.width,c.y*OUTSIDE_WORLD.height,c.active?"#ef635c":"#898989")});
+ dot(expedition.x,expedition.y,"#70efff");dot(expeditionArmy.x,expeditionArmy.y,"#fff",4);
+ miniCtx.strokeStyle="#fff9";miniCtx.strokeRect(outsideCamera.x*sx,outsideCamera.y*sy,Math.min(innerWidth,OUTSIDE_WORLD.width)*sx,Math.min(innerHeight,OUTSIDE_WORLD.height)*sy);
+}
+
 function drawOutsideFog(){
-  if(fogCanvas.width!==innerWidth||fogCanvas.height!==innerHeight){
-    fogCanvas.width=innerWidth;fogCanvas.height=innerHeight;
+  if(fogCanvas.width!==OUTSIDE_WORLD.width||fogCanvas.height!==OUTSIDE_WORLD.height){
+    fogCanvas.width=OUTSIDE_WORLD.width;fogCanvas.height=OUTSIDE_WORLD.height;
   }
-  fogCtx.clearRect(0,0,innerWidth,innerHeight);
+  fogCtx.clearRect(0,0,OUTSIDE_WORLD.width,OUTSIDE_WORLD.height);
   fogCtx.fillStyle="rgba(9,7,8,.68)";
-  fogCtx.fillRect(0,0,innerWidth,innerHeight);
+  fogCtx.fillRect(0,0,OUTSIDE_WORLD.width,OUTSIDE_WORLD.height);
   fogCtx.globalCompositeOperation="destination-out";
 
   function reveal(x,y,r){
@@ -2189,8 +2230,8 @@ function drawOutsideFog(){
     fogCtx.beginPath();fogCtx.arc(x,y,r,0,Math.PI*2);fogCtx.fill();
   }
 
-  exploredCells.forEach(function(key){const cell=key.split(",").map(Number);reveal((cell[0]+.5)/32*innerWidth,(cell[1]+.5)/24*innerHeight,Math.max(innerWidth/32,innerHeight/24)*1.8);});
-  reveal(innerWidth*.5,innerHeight*.88,220);
+  exploredCells.forEach(function(key){const cell=key.split(",").map(Number);reveal((cell[0]+.5)/32*OUTSIDE_WORLD.width,(cell[1]+.5)/24*OUTSIDE_WORLD.height,Math.max(OUTSIDE_WORLD.width/32,OUTSIDE_WORLD.height/24)*1.8);});
+  reveal(outsideHome().x,outsideHome().y,220);
   reveal(expedition.x,expedition.y,165+researchState.exploration*25);
   reveal(expeditionArmy.x,expeditionArmy.y,190+researchState.exploration*25);
 
@@ -2203,22 +2244,28 @@ function drawOutsideFog(){
   ctx.drawImage(fogCanvas,0,0);
 }
 function drawOutsideTerrain(){
-  ctx.fillStyle="#7f3524";ctx.fillRect(0,0,innerWidth,innerHeight);
+  updateOutsideCamera();ctx.save();ctx.translate(-outsideCamera.x,-outsideCamera.y);
+  ctx.fillStyle="#7f3524";ctx.fillRect(0,0,OUTSIDE_WORLD.width,OUTSIDE_WORLD.height);
   const tile=images["terrain_2_3.png"]||images["terrain_1_3.png"];
-  if(tile){for(let y=0;y<innerHeight;y+=GRID)for(let x=0;x<innerWidth;x+=GRID)ctx.drawImage(tile,x,y,GRID+1,GRID+1)}
-  worldProps.slice(0,14).forEach(function(p,i){drawImageCentered(p.sprite,(p.x*1.3+i*37)%innerWidth,(p.y*1.1+i*23)%innerHeight,GRID*.5,GRID*.5)});
+  if(tile){for(let y=Math.floor(outsideCamera.y/GRID)*GRID;y<Math.min(OUTSIDE_WORLD.height,outsideCamera.y+innerHeight+GRID);y+=GRID)for(let x=Math.floor(outsideCamera.x/GRID)*GRID;x<Math.min(OUTSIDE_WORLD.width,outsideCamera.x+innerWidth+GRID);x+=GRID)ctx.drawImage(tile,x,y,GRID+1,GRID+1)}
+  outsideRegions.forEach(function(region){
+ const x=region.x*OUTSIDE_WORLD.width,y=region.y*OUTSIDE_WORLD.height;ctx.save();ctx.globalAlpha=.24;ctx.fillStyle=region.color;ctx.beginPath();ctx.ellipse(x,y,480,310,0,0,Math.PI*2);ctx.fill();ctx.restore();
+ ctx.save();ctx.fillStyle="#efd5ab";ctx.font="bold 20px Arial";ctx.textAlign="center";ctx.fillText(region.name,x,y-180);ctx.restore();
+});
+ctx.save();ctx.strokeStyle="#c69965";ctx.lineWidth=10;ctx.globalAlpha=.35;ctx.beginPath();ctx.moveTo(1200,1512);ctx.lineTo(1080,1314);ctx.lineTo(600,1008);ctx.lineTo(528,792);ctx.moveTo(1080,1314);ctx.lineTo(1440,630);ctx.lineTo(1632,504);ctx.lineTo(1992,270);ctx.stroke();ctx.restore();
+for(let i=0;i<65;i++)drawImageCentered(i%3===0?"ridge_1.png":"rocks_mid.png",100+(i*317)%2200,100+(i*491)%1600,GRID*(i%3===0?1.3:.6),GRID*(i%3===0?1.3:.6));
   drawOutsideBasePreview();
   outsideEnemyCamps.forEach(drawEnemyCamp);
   drawEnemyPatrols();
-  outsideNodes.forEach(function(n){if(n.active)drawImageCentered(n.sprite,n.x*innerWidth,n.y*innerHeight,GRID*1.25,GRID*1.25)});
+  outsideNodes.forEach(function(n){if(n.active)drawImageCentered(n.sprite,n.x*OUTSIDE_WORLD.width,n.y*OUTSIDE_WORLD.height,GRID*1.25,GRID*1.25)});
   drawExplorationSites();
-  drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawPlayerCombatHUD();drawArmyConvoy();drawCombatFx();drawOutsideFog();
+  drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawPlayerCombatHUD();drawArmyConvoy();drawCombatFx();drawOutsideFog();ctx.restore();drawOutsideMinimap();
 }
 function updateOutside(dt){
   expedition.suitOxygen=Math.max(0,expedition.suitOxygen-dt*.75);
   if(expedition.suitOxygen<=0){statusEl.textContent="Suit oxygen depleted. Returning to base.";setMode("base");return}
   if(expedition.targetX!=null){
-    const dx=expedition.targetX-expedition.x,dy=expedition.targetY-expedition.y,dist=Math.hypot(dx,dy),speedPx=120;
+    const dx=expedition.targetX-expedition.x,dy=expedition.targetY-expedition.y,dist=Math.hypot(dx,dy),speedPx=200;
     if(dist<4){expedition.targetX=null;expedition.targetY=null}
     else{expedition.x+=dx/dist*speedPx*dt;expedition.y+=dy/dist*speedPx*dt}
   }
@@ -2259,7 +2306,7 @@ function updateOutside(dt){
   }
   outsideNodes.forEach(function(n){
     if(!n.active||expedition.harvestCooldown>0)return;
-    const nx=n.x*innerWidth,ny=n.y*innerHeight;
+    const nx=n.x*OUTSIDE_WORLD.width,ny=n.y*OUTSIDE_WORLD.height;
     if(Math.hypot(expedition.x-nx,expedition.y-ny)<58){
       const free=expedition.capacity-expedition.cargo;
       if(free<=0){statusEl.textContent="Cargo full. Return to base.";return}
@@ -2275,10 +2322,10 @@ function updateOutside(dt){
 }
 const oldCanvasPointer=canvas.onpointerdown;
 canvas.addEventListener("pointerdown",function(e){
-  if(gameMode==="outside"){const camp=campAtPoint(e.clientX,e.clientY);if(camp){dispatchArmyToCamp(camp);return}expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
+  if(gameMode==="outside"){if(paused)return;const p=outsidePoint(e.clientX,e.clientY),camp=campAtPoint(p.x,p.y);if(camp){dispatchArmyToCamp(camp);outsideCamera.follow="convoy";return}outsideCamera.follow="scout";expedition.targetX=p.x;expedition.targetY=p.y;return}
 },true);
 
-function loop(now){refreshBattleActions();refreshCycleHUD();const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(!paused)updateRaidScheduler(dt*speed);if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
+function loop(now){mapControls.style.display=gameMode==="outside"?"block":"none";refreshBattleActions();refreshCycleHUD();const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(!paused)updateRaidScheduler(dt*speed);if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();loadGame();applyResearchBonuses();resetEnemyPatrols();refreshSectorMap();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){
