@@ -47,7 +47,7 @@ body.layout-mode #missionPanel{display:none}
 body.layout-mode #status{bottom:108px}
 body.layout-mode #game{cursor:grab}
 body.layout-mode.dragging #game{cursor:grabbing}
-@media(max-width:800px){#layoutPanel{top:auto;bottom:115px;right:8px;width:min(285px,calc(100vw - 16px));#layoutOutput{height:100px}}}
+@media(max-width:800px){#layoutPanel{top:auto;bottom:115px;right:8px;width:min(285px,calc(100vw - 16px))}#layoutOutput{height:100px}}
 
 .fort-title{margin-top:9px;font-size:10px;font-weight:900;letter-spacing:.12em;color:#ffd174}
 #fortPalette{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px}
@@ -88,3 +88,23 @@ body.tutorial-open #actionBar{z-index:251}
   .tutorial-card{width:100%;padding:15px}
   .tutorial-card h2{font-size:18px}
 }
+
+
+/* RESEARCH + SECTOR UI */
+#researchPanel{position:fixed;z-index:80;inset:72px 8px 86px 8px;max-width:920px;margin:auto;background:linear-gradient(180deg,rgba(24,29,35,.98),rgba(11,14,17,.98));border:1px solid rgba(240,197,94,.48);border-radius:16px;padding:16px;box-shadow:0 24px 60px rgba(0,0,0,.55);overflow:auto}
+#researchPanel.hidden{display:none}
+.research-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:10px;margin-bottom:12px}
+.research-header h2{margin:3px 0 0;color:#ffd174;font-size:22px}.research-kicker{font-size:9px;letter-spacing:.14em;color:#9fa9b1;font-weight:900}
+#closeResearchBtn{border:0;background:transparent;color:white;font-size:28px;cursor:pointer}
+#researchGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.research-card{background:#1b2026;border:1px solid #414952;border-radius:12px;padding:13px;min-height:190px}
+.research-card.maxed{border-color:#65bd62;background:#19251c}.research-card h3{margin:0;color:#ffd174;font-size:15px}
+.research-level{margin-top:5px;font-size:10px;color:#8ee887;font-weight:900}.research-desc{font-size:10px;line-height:1.5;color:#c4cbd0;margin:10px 0}
+.research-effects{font-size:9px;color:#95a0a8;line-height:1.6}.research-buy{width:100%;margin-top:12px;border:1px solid #d99750;background:linear-gradient(#8a4b26,#5d311b);color:white;border-radius:8px;padding:9px;font-size:10px;font-weight:900;cursor:pointer}
+.research-buy:disabled{opacity:.42;cursor:not-allowed}.research-footer{margin-top:12px;font-size:9px;color:#8f999f;text-align:center}
+body.research-mode #buildPanel,body.research-mode #selectedPanel,body.research-mode #missionPanel,body.research-mode #actionBar{display:none!important}
+
+.sector-map{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.09)}.sector-title{font-size:9px;font-weight:900;letter-spacing:.11em;color:#ffd174;margin-bottom:6px}
+.sector-row{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.sector-btn{border:1px solid #4e565e;background:#242a30;color:#b8c0c5;border-radius:6px;padding:6px 3px;font-size:8px;font-weight:900;cursor:pointer}
+.sector-btn.active{background:#75401f;color:#fff;border-color:#d99750}.sector-btn.locked{opacity:.34;cursor:not-allowed}.sector-status{margin-top:6px;font-size:8px;color:#9da6ad;line-height:1.35}
+@media(max-width:800px){#researchGrid{grid-template-columns:1fr}#researchPanel{top:112px;bottom:12px}}
