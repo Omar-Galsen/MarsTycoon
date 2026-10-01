@@ -163,7 +163,7 @@ function closeResearch(){
   document.getElementById("researchPanel").classList.add("hidden");
   paused=false;
 }
-document.getElementById("researchModeBtn").onclick=openResearch;
+const researchTopBtn=document.getElementById("researchModeBtn"); if(researchTopBtn)researchTopBtn.style.display="none";
 document.getElementById("closeResearchBtn").onclick=closeResearch;
 
 function saveGame(){
@@ -358,6 +358,7 @@ tanksA:{name:"Tank Station",cost:350,sprite:"tank_station_1.png",size:1.2,catego
 tanksB:{name:"Water Tanks",cost:350,sprite:"tank_station_2.png",size:1.15,category:"life",unlock:2,baseProd:"Water cap",basePower:0,capacity:180,score:130},
 storageLarge:{name:"Large Storage",cost:420,sprite:"storage_large.png",size:1.15,category:"economy",unlock:3,baseProd:"Storage",basePower:0,capacity:250,score:170},
 satellite:{name:"Satellite Dish",cost:280,sprite:"satellite_dish.png",baseSprite:"satellite_comms_center.png",size:.8,category:"utility",unlock:2,baseProd:"Research",basePower:-1,capacity:0,score:115},
+researchLab:{name:"Research Center",cost:0,sprite:"satellite_dish.png",baseSprite:"satellite_comms_center.png",size:1.1,category:"utility",unlock:1,baseProd:"Technology research",basePower:-2,capacity:0,score:180,placeable:false},
 radio:{name:"Radio Tower",cost:220,sprite:"radio_tower.png",size:.75,category:"utility",unlock:2,baseProd:"Comms",basePower:-1,capacity:0,score:90},
 sensor:{name:"Wind Sensor",cost:140,sprite:"wind_sensor.png",size:.65,category:"utility",unlock:1,baseProd:"Forecast",basePower:0,capacity:0,score:55},
 terminal:{name:"Terminal",cost:175,sprite:"terminal.png",size:.75,category:"utility",unlock:2,baseProd:"Automation",basePower:-1,capacity:0,score:80},
@@ -378,6 +379,7 @@ function getBuildPlots(){
   const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
   return [
     {id:"hq",x:b.cx,y:b.cy,fixed:"command",scale:1.6},
+    {id:"research",x:b.cx,y:b.cy-2.55*u,fixed:"researchLab",scale:1.0},
     {id:"greenhouse",x:b.cx-3.45*u,y:b.cy-2.2*u,fixed:"greenhouse",scale:1.02},
     {id:"solar",x:b.cx+3.45*u,y:b.cy-2.2*u,fixed:"solar",scale:1.05},
     {id:"habitat",x:b.cx-3.55*u,y:b.cy-.6*u,fixed:"habitat",scale:1.12},
@@ -700,6 +702,26 @@ function updateRaidScheduler(dt){
   if(campaign.nextRaid<=0)startBaseRaid();
 }
 
+function drawResearchMarker(){
+  if(gameMode!=="base")return;
+  const lab=buildings.find(function(b){return b.type==="researchLab"});
+  if(!lab)return;
+  const cx=lab.x+GRID/2,cy=lab.y+GRID/2;
+  const pulse=12+Math.sin(performance.now()/350)*4;
+  ctx.save();
+  ctx.strokeStyle="rgba(89,205,255,.75)";
+  ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(cx,cy,pulse,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle="rgba(7,14,20,.82)";
+  ctx.beginPath();ctx.roundRect(cx-45,cy-62,90,18,7);ctx.fill();
+  ctx.fillStyle="#8fddff";
+  ctx.font="bold 9px Arial";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillText("RESEARCH",cx,cy-53);
+  ctx.restore();
+}
+
 function drawMilitaryDeploymentZone(){
   if(gameMode!=="base")return;
   const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
@@ -872,6 +894,13 @@ function nearestFreePlot(x,y){
 function placeOrSelect(x,y){
   const hit=buildingAtPoint(x,y);
   if(hit>=0){
+    if(buildings[hit].type==="researchLab"){
+      selectedPlaced=null;
+      hideSelectedPanel();
+      openResearch();
+      statusEl.textContent="Research Center opened.";
+      return;
+    }
     selectedPlaced=hit;showSelectedPanel();
     statusEl.textContent=buildingData[buildings[hit].type].name+" selected.";
     return;
@@ -947,7 +976,7 @@ const missions=[{label:"Build 5 structures",value:function(){return buildings.le
 function updateMissions(){const list=document.getElementById("missionList");list.innerHTML="";missions.forEach(function(m){const v=Math.min(m.value(),m.target),done=v>=m.target,el=document.createElement("div");el.className="mission"+(done?" done":"");el.innerHTML='<div class="mission-line"><span>'+(done?"✓ ":"")+m.label+"</span><b>"+v+"/"+m.target+'</b></div><div class="mission-progress"><div style="width:'+(v/m.target*100)+'%"></div></div>';list.appendChild(el)})}
 
 document.getElementById("sellBtn").onclick=function(){if(colony.iron>=10){colony.iron-=10;colony.credits+=40;statusEl.textContent="Sold 10 iron for $40.";updateHUD()}else statusEl.textContent="You need at least 10 iron."};
-document.getElementById("demolishBtn").onclick=function(){if(selectedPlaced==null||!buildings[selectedPlaced]){statusEl.textContent="Select a building first.";return}if(buildings[selectedPlaced].type==="command"){statusEl.textContent="The Command Center cannot be demolished.";return}const removed=buildings.splice(selectedPlaced,1)[0];colony.credits+=Math.floor(buildingData[removed.type].cost*.35);selectedPlaced=null;hideSelectedPanel();updateHUD();updateMissions();statusEl.textContent="Building demolished. 35% salvage returned."};
+document.getElementById("demolishBtn").onclick=function(){if(selectedPlaced==null||!buildings[selectedPlaced]){statusEl.textContent="Select a building first.";return}if(buildings[selectedPlaced].type==="command"||buildings[selectedPlaced].type==="researchLab"){statusEl.textContent="This core colony building cannot be demolished.";return}const removed=buildings.splice(selectedPlaced,1)[0];colony.credits+=Math.floor(buildingData[removed.type].cost*.35);selectedPlaced=null;hideSelectedPanel();updateHUD();updateMissions();statusEl.textContent="Building demolished. 35% salvage returned."};
 document.getElementById("pauseBtn").onclick=function(){paused=!paused;statusEl.textContent=paused?"Simulation paused.":"Simulation resumed."};
 document.getElementById("speedBtn").onclick=function(){speed=speed===1?2:1;statusEl.textContent="Simulation speed: "+speed+"x"};
 document.getElementById("menuBtn").onclick=function(){document.getElementById("catalog").classList.remove("hidden")};
@@ -1697,7 +1726,7 @@ canvas.addEventListener("pointerdown",function(e){
   if(gameMode==="outside"){const camp=campAtPoint(e.clientX,e.clientY);if(camp){dispatchArmyToCamp(camp);return}expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
 },true);
 
-function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateRaidScheduler(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
+function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateRaidScheduler(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();loadGame();applyResearchBonuses();resetEnemyPatrols();refreshSectorMap();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop);setTimeout(function(){startTutorial(false)},250)});
