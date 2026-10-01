@@ -423,6 +423,64 @@ function drawBaseInfrastructure(){
 
   ctx.restore();
 }
+function drawMilitaryDeploymentZone(){
+  if(gameMode!=="base")return;
+  const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
+  const y=b.bottom-u*.88;
+
+  // Reinforced military staging pad directly inside the south gate.
+  const parking=images["P/Plazas/parking_pad.png"]?"P/Plazas/parking_pad.png":null;
+  const landing=images["P/Plazas/landing_pad.png"]?"P/Plazas/landing_pad.png":null;
+  if(parking) drawImageCentered(parking,b.cx,y,u*3.05,u*1.45);
+  else if(landing) drawImageCentered(landing,b.cx,y,u*3.05,u*1.45);
+
+  ctx.save();
+  ctx.fillStyle="rgba(15,19,22,.78)";
+  ctx.strokeStyle="rgba(240,197,94,.65)";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.roundRect(b.cx-u*1.58,y-u*.72,u*3.16,u*1.44,14);
+  ctx.stroke();
+
+  // Checkpoint lane running straight to the south gate.
+  ctx.fillStyle="rgba(54,58,58,.72)";
+  ctx.fillRect(b.cx-u*.34,y+u*.42,u*.68,u*.58);
+  ctx.strokeStyle="rgba(240,197,94,.55)";
+  ctx.setLineDash([8,7]);
+  ctx.beginPath();ctx.moveTo(b.cx,y+u*.43);ctx.lineTo(b.cx,y+u*.96);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Deployment label.
+  ctx.fillStyle="rgba(10,13,16,.82)";
+  ctx.beginPath();ctx.roundRect(b.cx-u*.83,y-u*.72,u*1.66,u*.28,8);ctx.fill();
+  ctx.fillStyle="#ffd174";
+  ctx.font="bold 9px Arial";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillText("MILITARY DEPLOYMENT",b.cx,y-u*.58);
+
+  ctx.restore();
+
+  // Parked convoy vehicles.
+  drawRotated("transport_rover.png",b.cx-u*.72,y-u*.02,u*.92,u*.58,-Math.PI/2);
+  drawRotated("rover.png",b.cx-u*.06,y-u*.08,u*.72,u*.50,-Math.PI/2);
+  drawRotated("rover.png",b.cx+u*.58,y-u*.03,u*.72,u*.50,-Math.PI/2);
+
+  // Mustered soldiers use the generated Mars marine sprite.
+  if(images["mars_soldier.png"]){
+    [-.82,-.50,.48,.80].forEach(function(dx,i){
+      drawImageCentered("mars_soldier.png",b.cx+dx*u,y+u*.47,u*.34,u*.34);
+    });
+  }
+
+  // Supply / command props.
+  drawImageCentered("resource_crate.png",b.cx-u*1.26,y+u*.34,u*.35,u*.35);
+  drawImageCentered("supply_box.png",b.cx+u*1.24,y+u*.34,u*.34,u*.34);
+  drawImageCentered("terminal.png",b.cx+u*1.28,y-u*.34,u*.30,u*.30);
+  drawImageCentered("lamp_post.png",b.cx-u*1.48,y-u*.22,u*.30,u*.44);
+  drawImageCentered("lamp_post.png",b.cx+u*1.48,y-u*.22,u*.30,u*.44);
+}
+
 function drawProps(){
   const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
   const planter=images["P/Decor/planter.png"]?"P/Decor/planter.png":baseArt("garden_planter.png","planter_1.png");
@@ -741,7 +799,7 @@ function setMode(mode){
   }else if(mode==="base"){
     paused=false;
     depositCargo();
-    statusEl.textContent="Back at the colony base.";
+    statusEl.textContent="Back at the colony base. Military convoy staged at the south gate.";
   }
   updateExpeditionHUD();
 }
@@ -1199,7 +1257,7 @@ canvas.addEventListener("pointerdown",function(e){
   if(gameMode==="outside"){const camp=campAtPoint(e.clientX,e.clientY);if(camp){dispatchArmyToCamp(camp);return}expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
 },true);
 
-function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
+function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawMilitaryDeploymentZone();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();resetEnemyPatrols();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop);setTimeout(function(){startTutorial(false)},250)});
