@@ -1099,8 +1099,74 @@ function updateConstruction(dt){
     }
   });
 }
-function productionTick(){if(paused)return;buildings.forEach(function(b){if(isConstructing(b))return;const m=multiplier(b);switch(b.type){case"miner":if(colony.power>=m){colony.iron+=2*m;colony.power-=m}break;case"solar":colony.power+=4*m;break;case"solarLarge":colony.power+=10*m;break;case"oxygen":case"lifeSupport":if(colony.power>=2*m){colony.oxygen+=3*m;colony.power-=2*m}break;case"water":case"tanksB":if(colony.power>=2*m){colony.water+=2*m;colony.power-=2*m}break;case"greenhouse":if(colony.power>=2*m){colony.oxygen+=.8*m;colony.power-=2*m}break;case"refinery":if(colony.power>=4*m){colony.credits+=1.25*m;colony.power-=4*m}break;case"roverGarage":colony.power=Math.max(0,colony.power-.25*m);break;case"export":if(colony.iron>=20){colony.iron-=20;colony.credits+=85*m}break}});colony.oxygen=Math.max(0,colony.oxygen-.12*colony.population);colony.water=Math.max(0,colony.water-.07*colony.population);colony.power=Math.max(0,colony.power);updateHUD();if(selectedPlaced!=null)showSelectedPanel();updateMissions()}
-function updateHUD(){document.getElementById("credits").textContent=Math.floor(colony.credits);document.getElementById("iron").textContent=Math.floor(colony.iron);document.getElementById("water").textContent=Math.floor(colony.water);document.getElementById("oxygen").textContent=Math.floor(colony.oxygen);document.getElementById("power").textContent=Math.floor(colony.power);document.getElementById("population").textContent=colony.population;document.getElementById("hqLabel").textContent="Command Hub Lv."+colony.hqLevel;document.getElementById("colonyPowerScore").textContent=colonyScore().toLocaleString()}
+function colonyIncomePerSecond(){
+  let income=2; // Command administration / colony tax baseline.
+  buildings.forEach(function(b){
+    if(isConstructing(b))return;
+    const m=multiplier(b);
+    switch(b.type){
+      case "habitat": income+=1.1*m; break;
+      case "greenhouse": income+=.65*m; break;
+      case "storage": case "storageLarge": income+=.45*m; break;
+      case "roverGarage": income+=.75*m; break;
+      case "satellite": case "radio": income+=.40*m; break;
+      case "researchLab": income+=.55*m; break;
+      case "refinery": income+=1.25*m; break;
+    }
+  });
+  return income;
+}
+function productionTick(){
+  if(paused)return;
+
+  // Passive colony economy.
+  colony.credits+=colonyIncomePerSecond();
+
+  buildings.forEach(function(b){
+    if(isConstructing(b))return;
+    const m=multiplier(b);
+    switch(b.type){
+      case "miner":
+        if(colony.power>=m){colony.iron+=2*m;colony.power-=m}
+        break;
+      case "solar":
+        colony.power+=4*m;
+        break;
+      case "solarLarge":
+        colony.power+=10*m;
+        break;
+      case "oxygen":
+      case "lifeSupport":
+        if(colony.power>=2*m){colony.oxygen+=3*m;colony.power-=2*m}
+        break;
+      case "water":
+      case "tanksB":
+        if(colony.power>=2*m){colony.water+=2*m;colony.power-=2*m}
+        break;
+      case "greenhouse":
+        if(colony.power>=2*m){colony.oxygen+=.8*m;colony.power-=2*m}
+        break;
+      case "refinery":
+        if(colony.power>=4*m){colony.power-=4*m}
+        break;
+      case "roverGarage":
+        colony.power=Math.max(0,colony.power-.25*m);
+        break;
+      case "export":
+        if(colony.iron>=20){colony.iron-=20;colony.credits+=85*m}
+        break;
+    }
+  });
+
+  colony.oxygen=Math.max(0,colony.oxygen-.12*colony.population);
+  colony.water=Math.max(0,colony.water-.07*colony.population);
+  colony.power=Math.max(0,colony.power);
+
+  updateHUD();
+  if(selectedPlaced!=null)showSelectedPanel();
+  updateMissions();
+}
+function updateHUD(){document.getElementById("credits").textContent=Math.floor(colony.credits);document.getElementById("credits").title="Income: +$"+colonyIncomePerSecond().toFixed(1)+"/s";document.getElementById("iron").textContent=Math.floor(colony.iron);document.getElementById("water").textContent=Math.floor(colony.water);document.getElementById("oxygen").textContent=Math.floor(colony.oxygen);document.getElementById("power").textContent=Math.floor(colony.power);document.getElementById("population").textContent=colony.population;document.getElementById("hqLabel").textContent="Command Hub Lv."+colony.hqLevel;document.getElementById("colonyPowerScore").textContent=colonyScore().toLocaleString()}
 
 const missions=[{label:"Build 5 structures",value:function(){return buildings.length},target:5},{label:"Upgrade a building to Lv.3",value:function(){return Math.max.apply(null,buildings.map(function(b){return b.level}))},target:3},{label:"Reach 150 iron",value:function(){return Math.floor(colony.iron)},target:150},{label:"Clear an enemy camp",value:function(){return campaign.campsCleared},target:1},{label:"Defend the colony",value:function(){return campaign.raidsWon},target:1},{label:"Command Hub Lv.2",value:function(){return colony.hqLevel},target:2}];
 function updateMissions(){const list=document.getElementById("missionList");list.innerHTML="";missions.forEach(function(m){const v=Math.min(m.value(),m.target),done=v>=m.target,el=document.createElement("div");el.className="mission"+(done?" done":"");el.innerHTML='<div class="mission-line"><span>'+(done?"✓ ":"")+m.label+"</span><b>"+v+"/"+m.target+'</b></div><div class="mission-progress"><div style="width:'+(v/m.target*100)+'%"></div></div>';list.appendChild(el)})}
