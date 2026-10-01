@@ -58,6 +58,8 @@ const expeditionArmy={
     {ox:46,oy:72,health:45,maxHealth:45}
   ]
 };
+const combatProjectiles=[];
+const combatExplosions=[];
 
 // ------------------------------------------------------------
 // FIRST-RUN TUTORIAL
@@ -729,7 +731,7 @@ function setMode(mode){
   else if(mode==="outside"){
     selectedPlaced=null;hideSelectedPanel();
     expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.targetCamp=null;
-    statusEl.textContent="Tap terrain to move. Tap an enemy camp to deploy the military convoy.";
+    statusEl.textContent="Tap terrain to move. Tap an enemy camp to deploy the military convoy and engage automatically.";
   }else if(mode==="base"){
     paused=false;
     depositCargo();
@@ -769,10 +771,19 @@ function drawHealthBar(x,y,w,h,ratio,fill){
 }
 function drawEnemyUnit(camp,u){
   const p=campScreenPos(camp),x=p.x+u.ox,y=p.y+u.oy;
-  // simple military guard silhouette using existing assets
-  drawImageCentered("robot_worker.png",x,y,GRID*.42,GRID*.42);
-  drawImageCentered("terminal.png",x+12,y+5,GRID*.18,GRID*.18);
-  drawHealthBar(x,y-28,34,5,u.hp/u.maxHp,"#d85b4b");
+  const a=Math.atan2(expeditionArmy.y-y,expeditionArmy.x-x);
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(a+Math.PI/2);
+  ctx.fillStyle="#6d3b36";
+  ctx.beginPath();ctx.arc(0,-8,5,0,Math.PI*2);ctx.fill();
+  ctx.fillRect(-5,-2,10,15);
+  ctx.fillStyle="#21191a";
+  ctx.fillRect(3,1,14,3);
+  ctx.fillStyle="#4b2b29";
+  ctx.fillRect(-7,11,5,9);ctx.fillRect(2,11,5,9);
+  ctx.restore();
+  drawHealthBar(x,y-26,34,5,u.hp/u.maxHp,"#d85b4b");
 }
 function drawEnemyCamp(camp){
   if(!camp.active)return;
@@ -841,12 +852,25 @@ function updateArmy(dt){
 
   if(units.length){
     const target=units[0];
+    const cp=campScreenPos(camp),tx=cp.x+target.ox,ty=cp.y+target.oy;
+    const liveV=expeditionArmy.vehicles.filter(function(v){return v.health>0});
+    const liveS=expeditionArmy.soldiers.filter(function(s){return s.health>0});
+    liveV.slice(0,2).forEach(function(v){
+      spawnTracer(expeditionArmy.x+v.ox*.35,expeditionArmy.y+v.oy*.2,tx,ty,false);
+    });
+    liveS.slice(0,3).forEach(function(s){
+      spawnTracer(expeditionArmy.x+s.ox*.35,expeditionArmy.y+s.oy*.25,tx,ty,false);
+    });
     target.hp=Math.max(0,target.hp-attackPower);
+    if(target.hp<=0)spawnExplosion(tx,ty,18);
     statusEl.textContent="Convoy engaging guards at "+camp.name+".";
   }else{
+    const cp=campScreenPos(camp);
+    spawnTracer(expeditionArmy.x,expeditionArmy.y,cp.x,cp.y,false);
     camp.health=Math.max(0,camp.health-(attackPower+8));
     statusEl.textContent="Army attacking "+camp.name+".";
     if(camp.health<=0){
+      spawnExplosion(cp.x,cp.y,42);
       camp.active=false;
       expedition.cargo=Math.min(expedition.capacity,expedition.cargo+18);
       expeditionArmy.targetCamp=null;
@@ -877,11 +901,64 @@ function drawArmyConvoy(){
   expeditionArmy.soldiers.forEach(function(s){
     if(s.health<=0)return;
     const p=transform(s.ox,s.oy);
-    drawImageCentered("robot_worker.png",p.x,p.y,GRID*.28,GRID*.28);
-    drawHealthBar(p.x,p.y-18,25,4,s.health/s.maxHealth,"#79d173");
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.rotate(angle+Math.PI/2);
+    ctx.fillStyle="#51614c";
+    ctx.beginPath();ctx.arc(0,-7,5,0,Math.PI*2);ctx.fill();
+    ctx.fillRect(-5,-2,10,14);
+    ctx.fillStyle="#22282a";
+    ctx.fillRect(3,1,14,3);
+    ctx.fillStyle="#6f7e69";
+    ctx.fillRect(-7,10,5,9);ctx.fillRect(2,10,5,9);
+    ctx.restore();
+    drawHealthBar(p.x,p.y-20,25,4,s.health/s.maxHealth,"#79d173");
   });
 
   drawHealthBar(expeditionArmy.x,expeditionArmy.y-54,70,7,expeditionArmy.health/expeditionArmy.maxHealth,"#65c95f");
+}
+function spawnTracer(x1,y1,x2,y2,enemy){
+  combatProjectiles.push({
+    x:x1,y:y1,tx:x2,ty:y2,
+    vx:(x2-x1)*5,vy:(y2-y1)*5,
+    life:.20,maxLife:.20,enemy:!!enemy
+  });
+}
+function spawnExplosion(x,y,size){
+  combatExplosions.push({x:x,y:y,life:.55,maxLife:.55,size:size||28});
+}
+function updateCombatFx(dt){
+  for(let i=combatProjectiles.length-1;i>=0;i--){
+    const p=combatProjectiles[i];
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
+    if(p.life<=0)combatProjectiles.splice(i,1);
+  }
+  for(let i=combatExplosions.length-1;i>=0;i--){
+    combatExplosions[i].life-=dt;
+    if(combatExplosions[i].life<=0)combatExplosions.splice(i,1);
+  }
+}
+function drawCombatFx(){
+  ctx.save();
+  combatProjectiles.forEach(function(p){
+    ctx.strokeStyle=p.enemy?"#ff6b50":"#ffd86b";
+    ctx.lineWidth=2.2;
+    ctx.shadowBlur=8;
+    ctx.shadowColor=ctx.strokeStyle;
+    ctx.beginPath();
+    ctx.moveTo(p.x,p.y);
+    ctx.lineTo(p.x-p.vx*.025,p.y-p.vy*.025);
+    ctx.stroke();
+  });
+  combatExplosions.forEach(function(e){
+    const t=e.life/e.maxLife,r=e.size*(1.1-t*.25);
+    ctx.globalAlpha=Math.max(0,t);
+    ctx.fillStyle="#ff9b3e";
+    ctx.beginPath();ctx.arc(e.x,e.y,r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#ffd36a";
+    ctx.beginPath();ctx.arc(e.x,e.y,r*.48,0,Math.PI*2);ctx.fill();
+  });
+  ctx.restore();
 }
 function nearestEnemyThreat(){
   let hit=null,best=Infinity;
@@ -906,7 +983,7 @@ function drawOutsideTerrain(){
   worldProps.slice(0,14).forEach(function(p,i){drawImageCentered(p.sprite,(p.x*1.3+i*37)%innerWidth,(p.y*1.1+i*23)%innerHeight,GRID*.5,GRID*.5)});
   outsideEnemyCamps.forEach(drawEnemyCamp);
   outsideNodes.forEach(function(n){if(n.active)drawImageCentered(n.sprite,n.x*innerWidth,n.y*innerHeight,GRID*1.25,GRID*1.25)});
-  drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawPlayerCombatHUD();drawArmyConvoy();
+  drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawPlayerCombatHUD();drawArmyConvoy();drawCombatFx();
 }
 function updateOutside(dt){
   expedition.suitOxygen=Math.max(0,expedition.suitOxygen-dt*.75);
@@ -919,6 +996,7 @@ function updateOutside(dt){
   if(expedition.harvestCooldown>0)expedition.harvestCooldown-=dt;
   if(expedition.attackCooldown>0)expedition.attackCooldown-=dt;
   updateArmy(dt);
+  updateCombatFx(dt);
   const threat=nearestEnemyThreat();
   if(threat){
     const u=threat.unit;
@@ -927,8 +1005,10 @@ function updateOutside(dt){
       statusEl.textContent="Under fire near "+threat.camp.name+". Tap the camp to attack.";
       if(u.cooldown<=0){
         const campPos=campScreenPos(threat.camp);
-        const armyNear=Math.hypot(expeditionArmy.x-campPos.x,expeditionArmy.y-campPos.y)<180;
-        if(armyNear&&expeditionArmy.targetCamp===threat.camp){
+        const armyTargeted=Math.hypot(expeditionArmy.x-campPos.x,expeditionArmy.y-campPos.y)<180&&expeditionArmy.targetCamp===threat.camp;
+        spawnTracer(threat.x,threat.y,armyTargeted?expeditionArmy.x:expedition.x,armyTargeted?expeditionArmy.y:expedition.y,true);
+        const armyNear=armyTargeted;
+        if(armyNear){
           const liveSoldiers=expeditionArmy.soldiers.filter(function(s){return s.health>0});
           const liveVehicles=expeditionArmy.vehicles.filter(function(v){return v.health>0});
           if(liveSoldiers.length){
