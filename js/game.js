@@ -174,8 +174,16 @@ function drawBaseInfrastructure(){
   ctx.fillStyle="#aaa08e";
   ctx.strokeStyle="#504b43";
   ctx.lineWidth=4;
+
+  // Make the visible colony floor end at the lowest fort wall instead of
+  // continuing into an unused strip below the perimeter.
+  const fortBottomY=fortPieces.length
+    ? Math.max.apply(null,fortPieces.map(function(p){return p.y}))
+    : b.bottom-u*.10;
+  const floorTop=b.top+u*.12;
+  const floorBottom=Math.min(b.bottom-u*.06,fortBottomY+u*.10);
   ctx.beginPath();
-  ctx.roundRect(b.left+u*.15,b.top+u*.12,b.w-u*.30,b.h-u*.22,22);
+  ctx.roundRect(b.left+u*.15,floorTop,b.w-u*.30,Math.max(80,floorBottom-floorTop),22);
   ctx.fill();ctx.stroke();
 
   // landscaped city blocks
