@@ -41,7 +41,7 @@ let gameMode="base";
 let layoutDragIndex=null,layoutDragOffsetX=0,layoutDragOffsetY=0;
 let fortTool="wall",fortRotation=0,fortErase=false;
 const fortPieces=[];
-const expedition={x:innerWidth*0.5,y:innerHeight*0.5,targetX:null,targetY:null,cargo:0,capacity:40,suitOxygen:100,harvestCooldown:0};
+const expedition={x:innerWidth*0.5,y:innerHeight*0.5,targetX:null,targetY:null,cargo:0,capacity:40,suitOxygen:100,harvestCooldown:0,health:100,attackCooldown:0};
 
 // ------------------------------------------------------------
 // FIRST-RUN TUTORIAL
@@ -734,23 +734,46 @@ const outsideNodes=[
   {type:"rare",sprite:"rare_minerals.png",x:.52,y:.20,amount:10,active:true}
 ];
 const outsideEnemyCamps=[
-  {x:.17,y:.18,size:1.0,name:"Raider Camp Alpha"},
-  {x:.80,y:.30,size:1.12,name:"Raider Camp Beta"},
-  {x:.68,y:.76,size:.96,name:"Raider Camp Gamma"}
+  {x:.17,y:.18,size:1.0,name:"Raider Camp Alpha",health:120,maxHealth:120,active:true,units:[
+    {ox:-46,oy:38,hp:40,maxHp:40,cooldown:0},{ox:44,oy:32,hp:40,maxHp:40,cooldown:0},{ox:0,oy:58,hp:55,maxHp:55,cooldown:0}
+  ]},
+  {x:.80,y:.30,size:1.12,name:"Raider Camp Beta",health:150,maxHealth:150,active:true,units:[
+    {ox:-52,oy:36,hp:45,maxHp:45,cooldown:0},{ox:48,oy:40,hp:45,maxHp:45,cooldown:0},{ox:0,oy:62,hp:60,maxHp:60,cooldown:0}
+  ]},
+  {x:.68,y:.76,size:.96,name:"Raider Camp Gamma",health:110,maxHealth:110,active:true,units:[
+    {ox:-42,oy:34,hp:35,maxHp:35,cooldown:0},{ox:38,oy:30,hp:35,maxHp:35,cooldown:0}
+  ]}
 ];
+function campScreenPos(c){return{x:c.x*innerWidth,y:c.y*innerHeight}}
+function liveCampUnits(c){return c.units.filter(function(u){return u.hp>0})}
+function drawHealthBar(x,y,w,h,ratio,fill){
+  ctx.save();ctx.fillStyle="rgba(8,10,12,.85)";ctx.fillRect(x-w/2,y,w,h);
+  ctx.fillStyle=fill;ctx.fillRect(x-w/2+1,y+1,(w-2)*Math.max(0,Math.min(1,ratio)),h-2);
+  ctx.strokeStyle="rgba(255,255,255,.25)";ctx.strokeRect(x-w/2,y,w,h);ctx.restore();
+}
+function drawEnemyUnit(camp,u){
+  const p=campScreenPos(camp),x=p.x+u.ox,y=p.y+u.oy;
+  // simple military guard silhouette using existing assets
+  drawImageCentered("robot_worker.png",x,y,GRID*.42,GRID*.42);
+  drawImageCentered("terminal.png",x+12,y+5,GRID*.18,GRID*.18);
+  drawHealthBar(x,y-28,34,5,u.hp/u.maxHp,"#d85b4b");
+}
 function drawEnemyCamp(camp){
-  const x=camp.x*innerWidth,y=camp.y*innerHeight,s=GRID*camp.size;
+  if(!camp.active)return;
+  const p=campScreenPos(camp),x=p.x,y=p.y,s=GRID*camp.size;
   ctx.save();
   ctx.fillStyle="rgba(82,24,18,.38)";
   ctx.beginPath();ctx.ellipse(x,y+18,s*.92,s*.48,0,0,Math.PI*2);ctx.fill();
   drawImageCentered(images["BB/habitat_dome_small.png"]?"BB/habitat_dome_small.png":"habitat_small.png",x,y,s*1.45,s*1.15);
   drawImageCentered("resource_crate.png",x-s*.55,y+s*.24,s*.4,s*.4);
   drawImageCentered("barrel.png",x+s*.55,y+s*.20,s*.32,s*.32);
+  liveCampUnits(camp).forEach(function(u){drawEnemyUnit(camp,u)});
+  drawHealthBar(x,y-s*.62,110,7,camp.health/camp.maxHealth,"#e36a4f");
   ctx.fillStyle="rgba(20,8,8,.86)";
-  ctx.beginPath();ctx.roundRect(x-54,y-s*.68,108,22,7);ctx.fill();
+  ctx.beginPath();ctx.roundRect(x-58,y-s*.86,116,22,7);ctx.fill();
   ctx.strokeStyle="#d95b42";ctx.stroke();
   ctx.fillStyle="#ffb09e";ctx.font="bold 10px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
-  ctx.fillText(camp.name,x,y-s*.68+11);
+  ctx.fillText(camp.name,x,y-s*.86+11);
   ctx.restore();
 }
 function resetOutsideNodes(){outsideNodes.forEach(function(n){n.active=true})}
@@ -762,7 +785,50 @@ function updateExpeditionHUD(){
 }
 function depositCargo(){
   if(expedition.cargo>0){colony.iron+=expedition.cargo;statusEl.textContent="Returned with "+Math.floor(expedition.cargo)+" ore.";expedition.cargo=0}
-  expedition.suitOxygen=100;resetOutsideNodes();updateHUD();updateExpeditionHUD();
+  expedition.suitOxygen=100;expedition.health=100;resetOutsideNodes();updateHUD();updateExpeditionHUD();
+}
+function damageCampAtPoint(x,y){
+  let best=null,bestD=Infinity;
+  outsideEnemyCamps.forEach(function(c){
+    if(!c.active)return;
+    const p=campScreenPos(c),d=Math.hypot(x-p.x,y-p.y);
+    if(d<130&&d<bestD){best=c;bestD=d}
+  });
+  if(!best)return false;
+  if(expedition.attackCooldown>0)return true;
+  const units=liveCampUnits(best);
+  if(units.length){
+    const target=units[0];
+    target.hp=Math.max(0,target.hp-22);
+    statusEl.textContent="Hit enemy guard at "+best.name+".";
+  }else{
+    best.health=Math.max(0,best.health-28);
+    statusEl.textContent="Attacking "+best.name+".";
+    if(best.health<=0){
+      best.active=false;
+      expedition.cargo=Math.min(expedition.capacity,expedition.cargo+18);
+      statusEl.textContent=best.name+" cleared. Salvaged 18 cargo.";
+      updateExpeditionHUD();
+    }
+  }
+  expedition.attackCooldown=.45;
+  return true;
+}
+function nearestEnemyThreat(){
+  let hit=null,best=Infinity;
+  outsideEnemyCamps.forEach(function(c){
+    if(!c.active)return;
+    const p=campScreenPos(c);
+    liveCampUnits(c).forEach(function(u){
+      const ux=p.x+u.ox,uy=p.y+u.oy,d=Math.hypot(expedition.x-ux,expedition.y-uy);
+      if(d<best){best=d;hit={camp:c,unit:u,x:ux,y:uy,d:d}}
+    });
+  });
+  return hit;
+}
+function drawPlayerCombatHUD(){
+  if(gameMode!=="outside")return;
+  drawHealthBar(expedition.x,expedition.y-34,42,6,expedition.health/100,"#6ed36d");
 }
 function drawOutsideTerrain(){
   ctx.fillStyle="#7f3524";ctx.fillRect(0,0,innerWidth,innerHeight);
@@ -771,7 +837,7 @@ function drawOutsideTerrain(){
   worldProps.slice(0,14).forEach(function(p,i){drawImageCentered(p.sprite,(p.x*1.3+i*37)%innerWidth,(p.y*1.1+i*23)%innerHeight,GRID*.5,GRID*.5)});
   outsideEnemyCamps.forEach(drawEnemyCamp);
   outsideNodes.forEach(function(n){if(n.active)drawImageCentered(n.sprite,n.x*innerWidth,n.y*innerHeight,GRID*1.25,GRID*1.25)});
-  drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawImageCentered("transport_rover.png",innerWidth*.5,innerHeight*.9,GRID*1.2,GRID*.8);
+  drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawPlayerCombatHUD();drawImageCentered("transport_rover.png",innerWidth*.5,innerHeight*.9,GRID*1.2,GRID*.8);
 }
 function updateOutside(dt){
   expedition.suitOxygen=Math.max(0,expedition.suitOxygen-dt*.75);
@@ -782,11 +848,26 @@ function updateOutside(dt){
     else{expedition.x+=dx/dist*speedPx*dt;expedition.y+=dy/dist*speedPx*dt}
   }
   if(expedition.harvestCooldown>0)expedition.harvestCooldown-=dt;
-  outsideEnemyCamps.forEach(function(c){
-    if(Math.hypot(expedition.x-c.x*innerWidth,expedition.y-c.y*innerHeight)<110){
-      statusEl.textContent="Enemy camp nearby: "+c.name+". Combat will be added next.";
+  if(expedition.attackCooldown>0)expedition.attackCooldown-=dt;
+  const threat=nearestEnemyThreat();
+  if(threat){
+    const u=threat.unit;
+    if(u.cooldown>0)u.cooldown-=dt;
+    if(threat.d<165){
+      statusEl.textContent="Under fire near "+threat.camp.name+". Tap the camp to attack.";
+      if(u.cooldown<=0){
+        expedition.health=Math.max(0,expedition.health-6);
+        u.cooldown=1.0+Math.random()*.5;
+        if(expedition.health<=0){
+          statusEl.textContent="Expedition defeated. Emergency return to base.";
+          expedition.health=100;
+          expedition.cargo=0;
+          setMode("base");
+          return;
+        }
+      }
     }
-  });
+  }
   outsideNodes.forEach(function(n){
     if(!n.active||expedition.harvestCooldown>0)return;
     const nx=n.x*innerWidth,ny=n.y*innerHeight;
@@ -801,7 +882,7 @@ function updateOutside(dt){
 }
 const oldCanvasPointer=canvas.onpointerdown;
 canvas.addEventListener("pointerdown",function(e){
-  if(gameMode==="outside"){expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
+  if(gameMode==="outside"){if(damageCampAtPoint(e.clientX,e.clientY))return;expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
 },true);
 
 function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
