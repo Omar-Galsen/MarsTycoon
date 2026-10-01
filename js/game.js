@@ -99,6 +99,7 @@ const researchData={
 const baseRaid={
   active:false,
   enemies:[],
+  defenders:[],
   spawnTimer:0,
   attackCooldown:0,
   gateHealth:220,
@@ -579,25 +580,112 @@ function drawBaseInfrastructure(){
 
   ctx.restore();
 }
+function spawnColonyDefenders(){
+  const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
+  const count=4+researchState.military;
+  baseRaid.defenders=[];
+  for(let i=0;i<count;i++){
+    const lane=(i-(count-1)/2)*u*.48;
+    baseRaid.defenders.push({
+      x:b.cx+lane,
+      y:b.bottom-u*1.18-(i%2)*u*.18,
+      homeX:b.cx+lane,
+      homeY:b.bottom-u*1.18-(i%2)*u*.18,
+      hp:70+researchState.military*15,
+      maxHp:70+researchState.military*15,
+      cooldown:.15+i*.11,
+      speed:74+researchState.military*7,
+      state:"hold",
+      target:null,
+      active:true
+    });
+  }
+}
 function startBaseRaid(){
   if(baseRaid.active||gameMode!=="base")return;
   const b=baseGeometry();
   baseRaid.active=true;
   baseRaid.gateHealth=baseRaid.gateMaxHealth;
   baseRaid.enemies=[];
-  const count=Math.min(7,3+campaign.sector);
+  spawnColonyDefenders();
+
+  const count=Math.min(9,3+campaign.sector*2);
   for(let i=0;i<count;i++){
     baseRaid.enemies.push({
-      x:b.cx+(i-(count-1)/2)*62,
-      y:b.bottom+95+i*18,
+      x:b.cx+(i-(count-1)/2)*58,
+      y:b.bottom+100+i*16,
       hp:55+campaign.sector*12,
       maxHp:55+campaign.sector*12,
       speed:32+campaign.sector*3,
-      cooldown:.6+i*.15,
+      cooldown:.5+i*.12,
       active:true
     });
   }
-  statusEl.textContent="WARNING: Raider retaliation approaching the south gate!";
+  statusEl.textContent="DEFENSE AI ACTIVE: Raider force approaching the south gate!";
+}
+function nearestRaidEnemy(x,y){
+  let best=null,bestD=Infinity;
+  baseRaid.enemies.forEach(function(e){
+    if(!e.active||e.hp<=0)return;
+    const d=Math.hypot(e.x-x,e.y-y);
+    if(d<bestD){best=e;bestD=d}
+  });
+  return best?{enemy:best,d:bestD}:null;
+}
+function nearestDefender(x,y){
+  let best=null,bestD=Infinity;
+  baseRaid.defenders.forEach(function(d){
+    if(!d.active||d.hp<=0)return;
+    const dist=Math.hypot(d.x-x,d.y-y);
+    if(dist<bestD){best=d;bestD=dist}
+  });
+  return best?{defender:best,d:bestD}:null;
+}
+function updateColonyDefenseAI(dt){
+  if(!baseRaid.active)return;
+  const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
+  const defensiveLineY=b.bottom-u*.62;
+
+  baseRaid.defenders.forEach(function(d){
+    if(!d.active||d.hp<=0)return;
+
+    // Low-health troops fall back and recover behind the firing line.
+    if(d.hp<d.maxHp*.28){
+      d.state="retreat";
+      d.target=null;
+      const dx=d.homeX-d.x,dy=(d.homeY-u*.42)-d.y,dist=Math.hypot(dx,dy);
+      if(dist>5){d.x+=dx/dist*d.speed*dt;d.y+=dy/dist*d.speed*dt}
+      else d.hp=Math.min(d.maxHp,d.hp+7*dt);
+      return;
+    }
+
+    const threat=nearestRaidEnemy(d.x,d.y);
+    if(!threat){d.state="hold";d.target=null;return}
+    d.target=threat.enemy;
+
+    // AI chooses an intercept lane but stays safely inside the colony wall.
+    const desiredX=Math.max(b.left+u*.9,Math.min(b.right-u*.9,threat.enemy.x));
+    const desiredY=Math.min(defensiveLineY,d.homeY+u*.28);
+    const dx=desiredX-d.x,dy=desiredY-d.y,dist=Math.hypot(dx,dy);
+    if(dist>18){
+      d.state="intercept";
+      d.x+=dx/dist*d.speed*dt;
+      d.y+=dy/dist*d.speed*dt;
+    }else d.state="engage";
+
+    d.cooldown-=dt;
+    const range=Math.hypot(threat.enemy.x-d.x,threat.enemy.y-d.y);
+    if(range<300&&d.cooldown<=0){
+      const damage=15+researchState.military*4;
+      spawnTracer(d.x,d.y-8,threat.enemy.x,threat.enemy.y,false);
+      threat.enemy.hp=Math.max(0,threat.enemy.hp-damage);
+      if(threat.enemy.hp<=0){
+        threat.enemy.active=false;
+        spawnExplosion(threat.enemy.x,threat.enemy.y,22);
+      }
+      d.cooldown=Math.max(.30,.72-researchState.military*.07);
+    }
+  });
 }
 function updateBaseRaid(dt){
   if(!baseRaid.active)return;
@@ -605,29 +693,52 @@ function updateBaseRaid(dt){
   const gateX=b.cx,gateY=b.bottom-18;
   let alive=0;
 
+  updateColonyDefenseAI(dt);
+
   baseRaid.enemies.forEach(function(e){
     if(!e.active||e.hp<=0)return;
     alive++;
-    const dx=gateX-e.x,dy=gateY-e.y,dist=Math.hypot(dx,dy);
-    if(dist>82){
+
+    // Raiders prioritize nearby defenders before attacking the gate.
+    const defenderThreat=nearestDefender(e.x,e.y);
+    const targetDefender=defenderThreat&&defenderThreat.d<145?defenderThreat.defender:null;
+    const tx=targetDefender?targetDefender.x:gateX;
+    const ty=targetDefender?targetDefender.y:gateY;
+    const dx=tx-e.x,dy=ty-e.y,dist=Math.hypot(dx,dy);
+
+    if(dist>(targetDefender?105:82)){
       e.x+=dx/dist*e.speed*dt;
       e.y+=dy/dist*e.speed*dt;
     }else{
       e.cooldown-=dt;
       if(e.cooldown<=0){
-        baseRaid.gateHealth=Math.max(0,baseRaid.gateHealth-(7+campaign.sector));
-        spawnTracer(e.x,e.y,gateX,gateY,true);
-        e.cooldown=1.1;
+        if(targetDefender){
+          targetDefender.hp=Math.max(0,targetDefender.hp-(8+campaign.sector*2));
+          spawnTracer(e.x,e.y,targetDefender.x,targetDefender.y,true);
+          if(targetDefender.hp<=0){
+            targetDefender.active=false;
+            spawnExplosion(targetDefender.x,targetDefender.y,16);
+          }
+        }else{
+          baseRaid.gateHealth=Math.max(0,baseRaid.gateHealth-(7+campaign.sector));
+          spawnTracer(e.x,e.y,gateX,gateY,true);
+        }
+        e.cooldown=1.05;
       }
     }
   });
 
-  // Friendly deployment yard + two south defense turrets defend the gate.
+  // Automated turrets prioritize the hostile closest to the gate.
   baseRaid.attackCooldown-=dt;
   if(baseRaid.attackCooldown<=0){
-    const target=baseRaid.enemies.find(function(e){return e.active&&e.hp>0});
+    let target=null,best=Infinity;
+    baseRaid.enemies.forEach(function(e){
+      if(!e.active||e.hp<=0)return;
+      const d=Math.hypot(e.x-gateX,e.y-gateY);
+      if(d<best){best=d;target=e}
+    });
     if(target){
-      const turretSide=(Math.random()<.5?-1:1);
+      const turretSide=target.x<gateX?-1:1;
       const u=Math.min(b.w/11.5,b.h/7.6);
       const fireX=b.cx+turretSide*u*2.35,fireY=b.bottom-u*.60;
       spawnTracer(fireX,fireY,target.x,target.y,false);
@@ -642,20 +753,23 @@ function updateBaseRaid(dt){
 
   if(baseRaid.gateHealth<=0){
     baseRaid.active=false;
+    baseRaid.defenders=[];
     colony.credits=Math.max(0,colony.credits-(150-researchState.engineering*25));
     colony.iron=Math.max(0,colony.iron-(25-researchState.engineering*4));
     campaign.nextRaid=75;
-    statusEl.textContent="South gate breached. Repairs cost $150 and 25 iron.";
+    statusEl.textContent="South gate breached. Defense AI failed; emergency repairs started.";
     updateHUD();saveGame();
     return;
   }
 
   if(alive===0){
     baseRaid.active=false;
+    const survivors=baseRaid.defenders.filter(function(d){return d.active&&d.hp>0}).length;
+    baseRaid.defenders=[];
     campaign.raidsWon++;
     campaign.nextRaid=Math.max(28,55-campaign.sector*4);
     colony.credits+=120+campaign.sector*25;
-    statusEl.textContent="Base defended! Raider force destroyed.";
+    statusEl.textContent="Colony defended! "+survivors+" AI-controlled defenders survived.";
     updateHUD();updateMissions();saveGame();
   }
 }
@@ -666,16 +780,31 @@ function drawDefenseTurrets(){
     {x:b.cx+u*2.35,y:b.bottom-u*.60}
   ];
   pts.forEach(function(p){
+    const threat=nearestRaidEnemy(p.x,p.y);
+    const a=threat?Math.atan2(threat.enemy.y-p.y,threat.enemy.x-p.x):Math.PI/2;
     ctx.save();
+    ctx.translate(p.x,p.y);
     ctx.fillStyle="#252a2e";
     ctx.strokeStyle="#e89a43";
     ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(p.x,p.y,u*.24,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.arc(0,0,u*.24,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.rotate(a);
     ctx.fillStyle="#59636b";
-    ctx.fillRect(p.x-u*.06,p.y-u*.34,u*.12,u*.34);
+    ctx.fillRect(0,-u*.055,u*.40,u*.11);
     ctx.fillStyle="#ffb34f";
-    ctx.beginPath();ctx.arc(p.x,p.y-u*.35,u*.07,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(u*.40,0,u*.07,0,Math.PI*2);ctx.fill();
     ctx.restore();
+  });
+}
+function drawColonyDefenders(){
+  if(!baseRaid.active)return;
+  baseRaid.defenders.forEach(function(d){
+    if(!d.active||d.hp<=0)return;
+    if(images["mars_soldier.png"])drawImageCentered("mars_soldier.png",d.x,d.y-8,GRID*.38,GRID*.38);
+    else{
+      ctx.save();ctx.fillStyle="#5d7654";ctx.beginPath();ctx.arc(d.x,d.y-7,5,0,Math.PI*2);ctx.fill();ctx.fillRect(d.x-5,d.y-2,10,16);ctx.restore();
+    }
+    drawHealthBar(d.x,d.y-32,30,4,d.hp/d.maxHp,"#79d173");
   });
 }
 function drawBaseRaid(){
@@ -687,13 +816,14 @@ function drawBaseRaid(){
     drawRotated("rover.png",e.x,e.y,GRID*.75,GRID*.55,a);
     drawHealthBar(e.x,e.y-27,42,5,e.hp/e.maxHp,"#d85b4b");
   });
+  drawColonyDefenders();
   drawDefenseTurrets();
   drawHealthBar(gateX,gateY-34,110,7,baseRaid.gateHealth/baseRaid.gateMaxHealth,"#79d173");
   ctx.save();
   ctx.fillStyle="rgba(10,12,14,.82)";
-  ctx.beginPath();ctx.roundRect(gateX-57,gateY-58,114,20,7);ctx.fill();
+  ctx.beginPath();ctx.roundRect(gateX-70,gateY-58,140,20,7);ctx.fill();
   ctx.fillStyle="#ffd174";ctx.font="bold 9px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
-  ctx.fillText("SOUTH GATE",gateX,gateY-48);
+  ctx.fillText("DEFENSE AI • SOUTH GATE",gateX,gateY-48);
   ctx.restore();
 }
 function updateRaidScheduler(dt){
