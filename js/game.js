@@ -997,12 +997,9 @@ function drawUnits(){
   });
 }
 function updateUnits(dt){
-  const b=baseGeometry();
-  units.forEach(function(u){
-    u.x+=u.vx*dt;u.y+=u.vy*dt;
-    if(u.x<b.left+70||u.x>b.right-70)u.vx*=-1;
-    if(u.y<b.top+70||u.y>b.bottom-95)u.vy*=-1;
-  });
+  // Keep base workers, miners, rovers, drones and robots stationary.
+  // Combat/expedition units still move through their dedicated AI systems.
+  return;
 }
 function buildingAtPoint(x,y){
   let best=-1,bestDist=Infinity;
