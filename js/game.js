@@ -837,7 +837,8 @@ function updateBaseRaid(dt){
     const survivors=baseRaid.defenders.filter(function(d){return d.active&&d.hp>0}).length;
     baseRaid.defenders=[];
     campaign.raidsWon++;
-    campaign.nextRaid=Math.max(28,55-campaign.sector*4);
+    campaign.nextRaid=120;
+    resetOutsideNodes();
     colony.credits+=120+campaign.sector*25;
     statusEl.textContent="Colony defended! "+survivors+" AI-controlled defenders survived.";
     updateHUD();updateMissions();saveGame();
@@ -906,10 +907,22 @@ function drawBaseRaid(){
   ctx.fillText("DEFENSE AI • SOUTH GATE",gateX,gateY-48);
   ctx.restore();
 }
+
+const cycleHUD=document.createElement("div");
+cycleHUD.style.cssText="position:fixed;left:50%;top:76px;transform:translateX(-50%);padding:6px 12px;background:#142026e8;color:#ffd184;border-radius:8px;z-index:24;font:12px Arial;pointer-events:none;white-space:nowrap;";
+document.body.appendChild(cycleHUD);
+function refreshCycleHUD(){
+  cycleHUD.textContent=baseRaid.active?"DEFEND • "+baseRaid.enemies.filter(function(e){return e.active&&e.hp>0}).length+" monsters":
+    (gameMode==="outside"?"EXPLORE • Collect cargo, then return":"REBUILD / EXPLORE")+" • Next horde "+Math.ceil(campaign.nextRaid)+"s";
+}
+
 function updateRaidScheduler(dt){
-  if(gameMode!=="base"||baseRaid.active||campaign.campsCleared<1)return;
-  campaign.nextRaid-=dt;
-  if(campaign.nextRaid<=0)startBaseRaid();
+  if(baseRaid.active||gameMode==="layout")return;
+  campaign.nextRaid=Math.max(0,campaign.nextRaid-dt);
+  if(campaign.nextRaid<=0){
+    if(gameMode==="outside")setMode("base");
+    startBaseRaid();
+  }
 }
 
 function drawResearchMarker(){
@@ -1467,6 +1480,10 @@ document.querySelectorAll(".sector-btn").forEach(function(btn){
 
 function setMode(mode){
   if(baseRaid.active&&mode!=="base"){statusEl.textContent="Defend the colony before leaving the base.";return;}
+  if(document.body.classList.contains("tutorial-open"))return;
+  if(mode===gameMode)return;
+  if(mode==="outside"&&campaign.nextRaid<20){statusEl.textContent="Next horde is too close. Prepare your defenses.";return;}
+  const previousMode=gameMode;
   gameMode=mode;
   document.body.classList.toggle("outside-mode",mode==="outside");
   document.body.classList.toggle("layout-mode",mode==="layout");
@@ -1477,13 +1494,15 @@ function setMode(mode){
   document.getElementById("layoutPanel").classList.toggle("hidden",mode!=="layout");
   if(mode==="layout"){paused=true;selectedPlaced=null;hideSelectedPanel();refreshLayoutOutput();refreshFortStatus();statusEl.textContent="Layout mode: build the fort or switch to BUILDINGS to drag structures.";}
   else if(mode==="outside"){
+    paused=false;
     selectedPlaced=null;hideSelectedPanel();
     expedition.x=innerWidth*.5;expedition.y=innerHeight*.70;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.79;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();
     statusEl.textContent="Tap terrain to move. Tap an enemy camp to deploy the military convoy and engage automatically.";
   }else if(mode==="base"){
     paused=false;
-    depositCargo();
-    statusEl.textContent="Back at the colony base. Military convoy staged at the south gate.";
+    if(previousMode==="outside")depositCargo();
+    else statusEl.textContent="Build and upgrade before the next horde.";
+    saveGame();
   }
   refreshSectorMap();
   updateExpeditionHUD();
@@ -1581,16 +1600,23 @@ function drawEnemyCamp(camp){
   ctx.fillText(faction.tag,x,y-s*.86+18);
   ctx.restore();
 }
-function resetOutsideNodes(){outsideNodes.forEach(function(n){n.active=true})}
+function resetOutsideNodes(){outsideNodes.forEach(function(n,i){n.amount=[22,26,18,16,10][i];n.active=true})}
 function updateExpeditionHUD(){
+  const remaining=Math.ceil(campaign.nextRaid);
+  document.getElementById("returnBaseBtn").textContent="RETURN TO BASE • Horde in "+remaining+"s";
   document.getElementById("cargoText").textContent=Math.floor(expedition.cargo)+" / "+expedition.capacity;
   document.getElementById("cargoBar").style.width=Math.min(100,expedition.cargo/expedition.capacity*100)+"%";
   document.getElementById("suitOxygenText").textContent=Math.max(0,Math.floor(expedition.suitOxygen))+"%";
   document.getElementById("suitOxygenBar").style.width=Math.max(0,expedition.suitOxygen)+"%";
 }
 function depositCargo(){
-  if(expedition.cargo>0){colony.iron+=expedition.cargo;statusEl.textContent="Returned with "+Math.floor(expedition.cargo)+" ore.";expedition.cargo=0}
-  expedition.suitOxygen=100;expedition.health=100;expeditionArmy.health=expeditionArmy.maxHealth;expeditionArmy.vehicles.forEach(function(v){v.health=v.maxHealth});expeditionArmy.soldiers.forEach(function(s){s.health=s.maxHealth});expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();resetOutsideNodes();updateHUD();updateExpeditionHUD();
+  const cargo=expedition.cargo,ice=expedition.iceCargo||0,rare=expedition.rareCargo||0;
+  colony.iron+=Math.max(0,cargo-ice-rare);
+  colony.water+=ice*2;
+  colony.credits+=rare*20;
+  statusEl.textContent="Expedition returned: +"+Math.floor(Math.max(0,cargo-ice-rare))+" iron, +"+(ice*2)+" water, +$"+(rare*20)+".";
+  expedition.cargo=0;expedition.iceCargo=0;expedition.rareCargo=0;
+  expedition.suitOxygen=100;expedition.health=100;expeditionArmy.health=expeditionArmy.maxHealth;expeditionArmy.vehicles.forEach(function(v){v.health=v.maxHealth});expeditionArmy.soldiers.forEach(function(s){s.health=s.maxHealth});expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();updateHUD();updateExpeditionHUD();saveGame();
 }
 function resetEnemyPatrols(){
   enemyPatrolVehicles.forEach(function(v){
@@ -2062,7 +2088,7 @@ function updateOutside(dt){
           if(expedition.health<=0){
             statusEl.textContent="Expedition defeated. Emergency return to base.";
             expedition.health=100;
-            expedition.cargo=0;
+            expedition.cargo=0;expedition.iceCargo=0;expedition.rareCargo=0;
             setMode("base");
             return;
           }
@@ -2077,7 +2103,10 @@ function updateOutside(dt){
     if(Math.hypot(expedition.x-nx,expedition.y-ny)<58){
       const free=expedition.capacity-expedition.cargo;
       if(free<=0){statusEl.textContent="Cargo full. Return to base.";return}
-      const take=Math.min(n.amount,free);expedition.cargo+=take;n.active=false;expedition.harvestCooldown=.5;
+      const take=Math.min(n.amount,free);expedition.cargo+=take;
+      if(n.type==="ice")expedition.iceCargo=(expedition.iceCargo||0)+take;
+      if(n.type==="rare")expedition.rareCargo=(expedition.rareCargo||0)+take;
+      n.amount-=take;n.active=n.amount>0;expedition.harvestCooldown=.5;
       statusEl.textContent="Collected "+take+" "+(n.type==="ice"?"ice":"ore")+".";
     }
   });
@@ -2088,7 +2117,7 @@ canvas.addEventListener("pointerdown",function(e){
   if(gameMode==="outside"){const camp=campAtPoint(e.clientX,e.clientY);if(camp){dispatchArmyToCamp(camp);return}expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
 },true);
 
-function loop(now){refreshBattleActions();const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateRaidScheduler(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
+function loop(now){refreshBattleActions();refreshCycleHUD();const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(!paused)updateRaidScheduler(dt*speed);if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();loadGame();applyResearchBonuses();resetEnemyPatrols();refreshSectorMap();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){startBaseRaid(true);refreshBattleActions();startTutorial(false);requestAnimationFrame(loop)});
