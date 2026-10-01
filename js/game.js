@@ -3,7 +3,7 @@ const ctx=canvas.getContext("2d");
 const statusEl=document.getElementById("status");
 const buildMenu=document.getElementById("buildMenu");
 const GRID=96,ASSET="Assets/sprites/",BASE_ASSET="Assets/sprites/BaseBuilder/",ROAD_ASSET=BASE_ASSET+"Roads/",WALL_ASSET=BASE_ASSET+"Walls/",PLAZA_ASSET=BASE_ASSET+"Plazas/",DECOR_ASSET=BASE_ASSET+"Decor/";
-const spriteFiles=["barrel.png","colonist_1.png","colonist_2.png","colonist_3.png","colonist_4.png","colonist_5.png","crater_large.png","crater_small.png","drone_large.png","drone_small.png","dune_small.png","flag.png","habitat.png","habitat_small.png","ice_deposit.png","iron_ore.png","lamp_post.png","life_support_tower.png","miner.png","oxygen_plant.png","plant_rock_cluster.png","plants_cluster.png","radio_tower.png","rare_minerals.png","regolith.png","resource_crate.png","ridge_1.png","ridge_2.png","robot_worker.png","rock_small_1.png","rock_small_2.png","rock_spire.png","rocket_export.png","rocks_mid.png","rover.png","satellite_dish.png","solar_array_large.png","solar_panel.png","spire_cluster.png","storage.png","storage_large.png","supply_box.png","tank_station_1.png","tank_station_2.png","terminal.png","terrain_1_1.png","terrain_1_2.png","terrain_1_3.png","terrain_1_4.png","terrain_1_5.png","terrain_2_1.png","terrain_2_2.png","terrain_2_3.png","terrain_2_4.png","terrain_2_5.png","terrain_3_1.png","terrain_3_2.png","terrain_3_3.png","terrain_3_4.png","terrain_3_5.png","ui_build_button.png","ui_demolish_button.png","ui_fast_button.png","ui_health_bars.png","ui_menu_button.png","ui_pause_button.png","ui_resources_panel.png","ui_selection.png","ui_sell_button.png","ui_settings_button.png","ui_upgrade_button.png","water_extractor.png","wind_sensor.png","command_center.png","base_gate.png","greenhouse_1.png","greenhouse_2.png","planter_1.png","planter_2.png","refinery.png","rover_garage.png","road_tile_1.png","road_tile_2.png","wall_1.png","wall_2.png","wall_3.png","wall_4.png","ore_crate.png","transport_rover.png"];
+const spriteFiles=["mars_soldier.png","barrel.png","colonist_1.png","colonist_2.png","colonist_3.png","colonist_4.png","colonist_5.png","crater_large.png","crater_small.png","drone_large.png","drone_small.png","dune_small.png","flag.png","habitat.png","habitat_small.png","ice_deposit.png","iron_ore.png","lamp_post.png","life_support_tower.png","miner.png","oxygen_plant.png","plant_rock_cluster.png","plants_cluster.png","radio_tower.png","rare_minerals.png","regolith.png","resource_crate.png","ridge_1.png","ridge_2.png","robot_worker.png","rock_small_1.png","rock_small_2.png","rock_spire.png","rocket_export.png","rocks_mid.png","rover.png","satellite_dish.png","solar_array_large.png","solar_panel.png","spire_cluster.png","storage.png","storage_large.png","supply_box.png","tank_station_1.png","tank_station_2.png","terminal.png","terrain_1_1.png","terrain_1_2.png","terrain_1_3.png","terrain_1_4.png","terrain_1_5.png","terrain_2_1.png","terrain_2_2.png","terrain_2_3.png","terrain_2_4.png","terrain_2_5.png","terrain_3_1.png","terrain_3_2.png","terrain_3_3.png","terrain_3_4.png","terrain_3_5.png","ui_build_button.png","ui_demolish_button.png","ui_fast_button.png","ui_health_bars.png","ui_menu_button.png","ui_pause_button.png","ui_resources_panel.png","ui_selection.png","ui_sell_button.png","ui_settings_button.png","ui_upgrade_button.png","water_extractor.png","wind_sensor.png","command_center.png","base_gate.png","greenhouse_1.png","greenhouse_2.png","planter_1.png","planter_2.png","refinery.png","rover_garage.png","road_tile_1.png","road_tile_2.png","wall_1.png","wall_2.png","wall_3.png","wall_4.png","ore_crate.png","transport_rover.png"];
 const baseBuilderFiles=["command_center.png","habitat_dome_small.png","habitat_dome_large.png","water_processing_complex.png","solar_power_station.png","life_support_complex.png","greenhouse_complex.png","storage_warehouse.png","industrial_refinery.png","satellite_comms_center.png","rover_garage.png","landing_pad.png","base_gate.png","wall_tower.png","wall_straight.png","wall_corner.png","road_straight.png","road_corner.png","road_cross.png","build_pad.png","garden_planter.png","fountain_plaza.png","exploration_rover.png","astronaut.png","utility_drone.png","cargo_crates.png"];
 const puzzleFiles={
   "P/Roads/road_straight.png":ROAD_ASSET+"road_straight.png",
@@ -60,6 +60,11 @@ const expeditionArmy={
 };
 const combatProjectiles=[];
 const combatExplosions=[];
+const enemyPatrolVehicles=[
+  {campIndex:0,x:null,y:null,health:85,maxHealth:85,speed:92,cooldown:0,active:true,launched:false},
+  {campIndex:1,x:null,y:null,health:110,maxHealth:110,speed:86,cooldown:0,active:true,launched:false},
+  {campIndex:2,x:null,y:null,health:75,maxHealth:75,speed:98,cooldown:0,active:true,launched:false}
+];
 
 // ------------------------------------------------------------
 // FIRST-RUN TUTORIAL
@@ -730,7 +735,7 @@ function setMode(mode){
   if(mode==="layout"){paused=true;selectedPlaced=null;hideSelectedPanel();refreshLayoutOutput();refreshFortStatus();statusEl.textContent="Layout mode: build the fort or switch to BUILDINGS to drag structures.";}
   else if(mode==="outside"){
     selectedPlaced=null;hideSelectedPanel();
-    expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.targetCamp=null;
+    expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.targetCamp=null;resetEnemyPatrols();
     statusEl.textContent="Tap terrain to move. Tap an enemy camp to deploy the military convoy and engage automatically.";
   }else if(mode==="base"){
     paused=false;
@@ -812,7 +817,92 @@ function updateExpeditionHUD(){
 }
 function depositCargo(){
   if(expedition.cargo>0){colony.iron+=expedition.cargo;statusEl.textContent="Returned with "+Math.floor(expedition.cargo)+" ore.";expedition.cargo=0}
-  expedition.suitOxygen=100;expedition.health=100;expeditionArmy.health=expeditionArmy.maxHealth;expeditionArmy.vehicles.forEach(function(v){v.health=v.maxHealth});expeditionArmy.soldiers.forEach(function(s){s.health=s.maxHealth});expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.targetCamp=null;resetOutsideNodes();updateHUD();updateExpeditionHUD();
+  expedition.suitOxygen=100;expedition.health=100;expeditionArmy.health=expeditionArmy.maxHealth;expeditionArmy.vehicles.forEach(function(v){v.health=v.maxHealth});expeditionArmy.soldiers.forEach(function(s){s.health=s.maxHealth});expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.targetCamp=null;resetEnemyPatrols();resetOutsideNodes();updateHUD();updateExpeditionHUD();
+}
+function resetEnemyPatrols(){
+  enemyPatrolVehicles.forEach(function(v){
+    const camp=outsideEnemyCamps[v.campIndex];
+    const p=campScreenPos(camp);
+    v.x=p.x;v.y=p.y+42;v.health=v.maxHealth;v.cooldown=0;
+    v.active=!!camp.active;v.launched=false;
+  });
+}
+function livePatrolsForCamp(camp){
+  const idx=outsideEnemyCamps.indexOf(camp);
+  return enemyPatrolVehicles.filter(function(v){return v.active&&v.health>0&&v.campIndex===idx});
+}
+function nearestPatrolToArmy(maxDist){
+  let best=null,bestD=(typeof maxDist==="number"?maxDist:Infinity);
+  enemyPatrolVehicles.forEach(function(v){
+    if(!v.active||v.health<=0||v.x==null)return;
+    const d=Math.hypot(expeditionArmy.x-v.x,expeditionArmy.y-v.y);
+    if(d<bestD){bestD=d;best=v}
+  });
+  return best?{vehicle:best,d:bestD}:null;
+}
+function damageArmyFromPatrol(amount){
+  const liveSoldiers=expeditionArmy.soldiers.filter(function(s){return s.health>0});
+  const liveVehicles=expeditionArmy.vehicles.filter(function(v){return v.health>0});
+  if(liveSoldiers.length){
+    const s=liveSoldiers[Math.floor(Math.random()*liveSoldiers.length)];
+    s.health=Math.max(0,s.health-amount);
+  }else if(liveVehicles.length){
+    const v=liveVehicles[Math.floor(Math.random()*liveVehicles.length)];
+    v.health=Math.max(0,v.health-amount);
+  }
+  expeditionArmy.health=
+    expeditionArmy.vehicles.reduce(function(n,v){return n+v.health},0)+
+    expeditionArmy.soldiers.reduce(function(n,s){return n+s.health},0);
+}
+function updateEnemyPatrols(dt){
+  enemyPatrolVehicles.forEach(function(v){
+    const camp=outsideEnemyCamps[v.campIndex];
+    if(!camp||!camp.active||v.health<=0){v.active=false;return}
+    if(v.x==null||v.y==null){
+      const cp=campScreenPos(camp);v.x=cp.x;v.y=cp.y+42;
+    }
+
+    // Patrol launches when its camp is targeted, then intercepts the convoy.
+    if(expeditionArmy.targetCamp===camp)v.launched=true;
+    if(!v.launched)return;
+
+    const dx=expeditionArmy.x-v.x,dy=expeditionArmy.y-v.y,dist=Math.hypot(dx,dy);
+    if(dist>105){
+      v.x+=dx/dist*v.speed*dt;
+      v.y+=dy/dist*v.speed*dt;
+      return;
+    }
+
+    if(v.cooldown>0)v.cooldown-=dt;
+    if(v.cooldown<=0){
+      spawnTracer(v.x,v.y,expeditionArmy.x,expeditionArmy.y,true);
+      damageArmyFromPatrol(10);
+      v.cooldown=1.15;
+      statusEl.textContent="Enemy patrol vehicle intercepting the convoy.";
+      if(expeditionArmy.health<=0){
+        spawnExplosion(expeditionArmy.x,expeditionArmy.y,34);
+        statusEl.textContent="Army convoy destroyed by enemy patrols.";
+        expeditionArmy.health=expeditionArmy.maxHealth;
+        expeditionArmy.vehicles.forEach(function(a){a.health=a.maxHealth});
+        expeditionArmy.soldiers.forEach(function(a){a.health=a.maxHealth});
+        expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;
+        expeditionArmy.targetCamp=null;
+        v.launched=false;
+      }
+    }
+  });
+}
+function drawEnemyPatrols(){
+  enemyPatrolVehicles.forEach(function(v){
+    if(!v.active||v.health<=0||v.x==null)return;
+    const angle=Math.atan2(expeditionArmy.y-v.y,expeditionArmy.x-v.x);
+    drawRotated("rover.png",v.x,v.y,GRID*.82,GRID*.60,angle+Math.PI/2);
+    ctx.save();
+    ctx.strokeStyle="#d95b42";ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(v.x,v.y,25,0,Math.PI*2);ctx.stroke();
+    ctx.restore();
+    drawHealthBar(v.x,v.y-30,44,5,v.health/v.maxHealth,"#d85b4b");
+  });
 }
 function campAtPoint(x,y){
   let best=null,bestD=Infinity;
@@ -827,7 +917,8 @@ function dispatchArmyToCamp(camp){
   if(!camp||!camp.active)return false;
   expeditionArmy.targetCamp=camp;
   expeditionArmy.active=true;
-  statusEl.textContent="Army convoy dispatched to "+camp.name+".";
+  livePatrolsForCamp(camp).forEach(function(v){v.launched=true});
+  statusEl.textContent="Army convoy dispatched to "+camp.name+". Enemy patrols are mobilizing.";
   return true;
 }
 function updateArmy(dt){
@@ -849,8 +940,22 @@ function updateArmy(dt){
   const activeVehicles=expeditionArmy.vehicles.filter(function(v){return v.health>0}).length;
   const activeSoldiers=expeditionArmy.soldiers.filter(function(s){return s.health>0}).length;
   const attackPower=10+activeVehicles*5+activeSoldiers*2;
+  const patrolThreat=nearestPatrolToArmy(190);
 
-  if(units.length){
+  if(patrolThreat){
+    const pv=patrolThreat.vehicle;
+    expeditionArmy.vehicles.filter(function(v){return v.health>0}).slice(0,2).forEach(function(){
+      spawnTracer(expeditionArmy.x,expeditionArmy.y,pv.x,pv.y,false);
+    });
+    pv.health=Math.max(0,pv.health-attackPower);
+    if(pv.health<=0){
+      pv.active=false;
+      spawnExplosion(pv.x,pv.y,28);
+      statusEl.textContent="Enemy patrol vehicle destroyed.";
+    }else{
+      statusEl.textContent="Convoy engaging enemy patrol vehicle.";
+    }
+  }else if(units.length){
     const target=units[0];
     const cp=campScreenPos(camp),tx=cp.x+target.ox,ty=cp.y+target.oy;
     const liveV=expeditionArmy.vehicles.filter(function(v){return v.health>0});
@@ -901,18 +1006,26 @@ function drawArmyConvoy(){
   expeditionArmy.soldiers.forEach(function(s){
     if(s.health<=0)return;
     const p=transform(s.ox,s.oy);
-    ctx.save();
-    ctx.translate(p.x,p.y);
-    ctx.rotate(angle+Math.PI/2);
-    ctx.fillStyle="#51614c";
-    ctx.beginPath();ctx.arc(0,-7,5,0,Math.PI*2);ctx.fill();
-    ctx.fillRect(-5,-2,10,14);
-    ctx.fillStyle="#22282a";
-    ctx.fillRect(3,1,14,3);
-    ctx.fillStyle="#6f7e69";
-    ctx.fillRect(-7,10,5,9);ctx.fillRect(2,10,5,9);
-    ctx.restore();
-    drawHealthBar(p.x,p.y-20,25,4,s.health/s.maxHealth,"#79d173");
+    const fighting=!!expeditionArmy.targetCamp;
+    if(fighting&&images["mars_soldier.png"]){
+      // New armored Mars infantry artwork.
+      // Slight overlap is intentional so the squad reads as a formation.
+      drawImageCentered("mars_soldier.png",p.x,p.y-9,GRID*.48,GRID*.48);
+      drawHealthBar(p.x,p.y-34,30,4,s.health/s.maxHealth,"#79d173");
+    }else{
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      ctx.rotate(angle+Math.PI/2);
+      ctx.fillStyle="#51614c";
+      ctx.beginPath();ctx.arc(0,-7,5,0,Math.PI*2);ctx.fill();
+      ctx.fillRect(-5,-2,10,14);
+      ctx.fillStyle="#22282a";
+      ctx.fillRect(3,1,14,3);
+      ctx.fillStyle="#6f7e69";
+      ctx.fillRect(-7,10,5,9);ctx.fillRect(2,10,5,9);
+      ctx.restore();
+      drawHealthBar(p.x,p.y-20,25,4,s.health/s.maxHealth,"#79d173");
+    }
   });
 
   drawHealthBar(expeditionArmy.x,expeditionArmy.y-54,70,7,expeditionArmy.health/expeditionArmy.maxHealth,"#65c95f");
@@ -982,6 +1095,7 @@ function drawOutsideTerrain(){
   if(tile){for(let y=0;y<innerHeight;y+=GRID)for(let x=0;x<innerWidth;x+=GRID)ctx.drawImage(tile,x,y,GRID+1,GRID+1)}
   worldProps.slice(0,14).forEach(function(p,i){drawImageCentered(p.sprite,(p.x*1.3+i*37)%innerWidth,(p.y*1.1+i*23)%innerHeight,GRID*.5,GRID*.5)});
   outsideEnemyCamps.forEach(drawEnemyCamp);
+  drawEnemyPatrols();
   outsideNodes.forEach(function(n){if(n.active)drawImageCentered(n.sprite,n.x*innerWidth,n.y*innerHeight,GRID*1.25,GRID*1.25)});
   drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawPlayerCombatHUD();drawArmyConvoy();drawCombatFx();
 }
@@ -996,6 +1110,7 @@ function updateOutside(dt){
   if(expedition.harvestCooldown>0)expedition.harvestCooldown-=dt;
   if(expedition.attackCooldown>0)expedition.attackCooldown-=dt;
   updateArmy(dt);
+  updateEnemyPatrols(dt);
   updateCombatFx(dt);
   const threat=nearestEnemyThreat();
   if(threat){
@@ -1064,5 +1179,5 @@ canvas.addEventListener("pointerdown",function(e){
 
 function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
-resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
+resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();resetEnemyPatrols();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop);setTimeout(function(){startTutorial(false)},250)});
