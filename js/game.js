@@ -213,11 +213,8 @@ function loadGame(){
   }catch(e){return false}
 }
 setInterval(saveGame,10000);
-const enemyPatrolVehicles=[
-  {campIndex:0,x:null,y:null,health:85,maxHealth:85,speed:92,cooldown:0,active:true,launched:false},
-  {campIndex:1,x:null,y:null,health:110,maxHealth:110,speed:86,cooldown:0,active:true,launched:false},
-  {campIndex:2,x:null,y:null,health:75,maxHealth:75,speed:98,cooldown:0,active:true,launched:false}
-];
+// Enemy camps use monsters and guards; no patrol cars spawn or intercept the convoy.
+const enemyPatrolVehicles=[];
 
 // ------------------------------------------------------------
 // FIRST-RUN TUTORIAL
