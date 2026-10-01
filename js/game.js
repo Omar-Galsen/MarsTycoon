@@ -763,6 +763,7 @@ function updateColonyDefenseAI(dt){
       const damage=15+researchState.military*4;
       beginAttack(d,threat.enemy.x,threat.enemy.y);
       spawnTracer(d.x,d.y-8,threat.enemy.x,threat.enemy.y,false);
+      combatHit(threat.enemy.x,threat.enemy.y,Math.min(threat.enemy.hp,damage),false);
       threat.enemy.hp=Math.max(0,threat.enemy.hp-damage);
       if(threat.enemy.hp<=0){
         threat.enemy.active=false;
@@ -790,6 +791,7 @@ function updatePlacedTurrets(dt){
     if(!threat||threat.d>240+(b.level-1)*12||b.fireCooldown>0)return;
     b.aim=Math.atan2(threat.enemy.y-y,threat.enemy.x-x);
     spawnTracer(x,y,threat.enemy.x,threat.enemy.y,false);
+    combatHit(threat.enemy.x,threat.enemy.y,Math.min(threat.enemy.hp,18+(b.level-1)*6+researchState.military*3),false);
     threat.enemy.hp=Math.max(0,threat.enemy.hp-(18+(b.level-1)*6+researchState.military*3));
     if(threat.enemy.hp<=0){threat.enemy.active=false;spawnExplosion(threat.enemy.x,threat.enemy.y,18);}
     b.fireCooldown=Math.max(.25,.8-(b.level-1)*.045);
@@ -1628,12 +1630,51 @@ function drawEnemyUnit(camp,u){
   ctx.restore();
   drawHealthBar(x,y-26,34,5,u.hp/u.maxHp,currentFaction().accent);
 }
+
+const damagePopups=[];
+function combatHit(x,y,amount,enemy){
+  damagePopups.push({x:x,y:y,amount:Math.round(amount),life:.75,enemy:!!enemy});
+}
+function convoyMembers(){
+  const a=expeditionArmy.heading,fx=Math.cos(a),fy=Math.sin(a);
+  return expeditionArmy.vehicles.concat(expeditionArmy.soldiers).filter(function(v){return v.health>0}).map(function(v){
+    return {unit:v,x:expeditionArmy.x-fy*v.ox-fx*v.oy,y:expeditionArmy.y+fx*v.ox-fy*v.oy};
+  });
+}
+function updateMonsterStrikes(dt){
+  for(const camp of outsideEnemyCamps){
+    if(!camp.active)continue;
+    const p=campScreenPos(camp);
+    const targets=convoyMembers().map(function(m){m.distance=Math.hypot(m.x-p.x,m.y-p.y);return m;}).filter(function(m){return m.distance<210;});
+    targets.sort(function(a,b){return a.distance-b.distance;});
+    camp.strikeCooldown=Math.max(0,(camp.strikeCooldown||0)-dt);
+    if(camp.strikeElapsed!=null){
+      const previous=camp.strikeElapsed;camp.strikeElapsed+=dt;
+      if(previous<.44&&camp.strikeElapsed>=.44&&targets.length){
+        const hit=targets[0],damage=Math.round(16+campaign.selectedSector*3);
+        const actual=Math.min(hit.unit.health,damage);hit.unit.health=Math.max(0,hit.unit.health-damage);
+        combatHit(hit.x,hit.y,actual,true);
+        if(hit.unit.health<=0)spawnExplosion(hit.x,hit.y,22);
+        expeditionArmy.maxHealth=expeditionArmy.vehicles.concat(expeditionArmy.soldiers).reduce(function(n,v){return n+v.maxHealth},0);
+        expeditionArmy.health=expeditionArmy.vehicles.concat(expeditionArmy.soldiers).reduce(function(n,v){return n+v.health},0);
+        if(expeditionArmy.health<=0){
+          expedition.cargo=0;expedition.iceCargo=0;expedition.rareCargo=0;
+          setMode("base");statusEl.textContent="Convoy defeated! Cargo lost. Survivors evacuated to the colony.";
+          return;
+        }
+      }
+      if(camp.strikeElapsed>=.88){camp.strikeElapsed=null;camp.strikeCooldown=.7;}
+    }else if(targets.length&&camp.strikeCooldown<=0)camp.strikeElapsed=0;
+  }
+}
+
 function monsterAttackFrame(camp,x,y){
+  if(camp.strikeElapsed!=null){const frame=1+Math.min(7,Math.floor(camp.strikeElapsed/.11));return "Enemy/Attack/wild_monster_attack_"+String(frame).padStart(2,"0")+".png";}
   // Attack animation plays only when the monster is actively engaged and a target is close.
   const armyDist=Math.hypot(expeditionArmy.x-x,expeditionArmy.y-y);
   const playerDist=Math.hypot(expedition.x-x,expedition.y-y);
   const targetDist=Math.min(armyDist,playerDist);
-  const engaged=(expeditionArmy.targetCamp===camp&&armyDist<210)||playerDist<210;
+  const engaged=playerDist<210;
   if(!engaged)return null;
 
   // 8-frame loop: wind-up -> slash -> recover -> repeat.
@@ -1883,12 +1924,14 @@ function updateArmy(dt){
       beginAttack(s,tx,ty);
       spawnTracer(expeditionArmy.x+s.ox*.35,expeditionArmy.y+s.oy*.25,tx,ty,false);
     });
+    combatHit(tx,ty,Math.min(target.hp,attackPower),false);
     target.hp=Math.max(0,target.hp-attackPower);
     if(target.hp<=0)spawnExplosion(tx,ty,18);
     statusEl.textContent="Convoy engaging guards at "+camp.name+".";
   }else{
     const cp=campScreenPos(camp);
     spawnTracer(expeditionArmy.x,expeditionArmy.y,cp.x,cp.y,false);
+    combatHit(cp.x,cp.y,Math.min(camp.health,attackPower+8),false);
     camp.health=Math.max(0,camp.health-(attackPower+8));
     statusEl.textContent="Army attacking "+camp.name+".";
     if(camp.health<=0){
@@ -1979,6 +2022,7 @@ function spawnExplosion(x,y,size){
   combatExplosions.push({x:x,y:y,life:.55,maxLife:.55,size:size||28});
 }
 function updateCombatFx(dt){
+  for(let i=damagePopups.length-1;i>=0;i--){damagePopups[i].life-=dt;damagePopups[i].y-=24*dt;if(damagePopups[i].life<=0)damagePopups.splice(i,1);}
   combatAnimationTime+=dt;
   expeditionArmy.soldiers.concat(baseRaid.defenders).forEach(function(actor){
     actor.attackAnimation=Math.max(0,(actor.attackAnimation||0)-dt);
@@ -1995,6 +2039,11 @@ function updateCombatFx(dt){
 }
 function drawCombatFx(){
   ctx.save();
+  damagePopups.forEach(function(hit){
+    ctx.globalAlpha=Math.min(1,hit.life*3);ctx.fillStyle=hit.enemy?"#ff7770":"#ffe58c";ctx.strokeStyle="#1c1010";ctx.lineWidth=3;ctx.font="bold 17px Arial";ctx.textAlign="center";
+    const text="-"+hit.amount;ctx.strokeText(text,hit.x,hit.y-20);ctx.fillText(text,hit.x,hit.y-20);
+    if(hit.life>.5){ctx.beginPath();ctx.arc(hit.x,hit.y,22,0,Math.PI*2);ctx.strokeStyle=hit.enemy?"#ff6b50":"#ffe58c";ctx.stroke();}
+  });ctx.globalAlpha=1;
   combatProjectiles.forEach(function(p){
     ctx.strokeStyle=p.enemy?"#ff6b50":"#ffd86b";
     ctx.lineWidth=2.2;
@@ -2127,6 +2176,8 @@ function updateOutside(dt){
   if(expedition.harvestCooldown>0)expedition.harvestCooldown-=dt;
   if(expedition.attackCooldown>0)expedition.attackCooldown-=dt;
   updateArmy(dt);
+  updateMonsterStrikes(dt);
+  if(gameMode!=="outside")return;
   updateEnemyPatrols(dt);
   updateCombatFx(dt);
   const threat=nearestEnemyThreat();
@@ -2141,30 +2192,10 @@ function updateOutside(dt){
         spawnTracer(threat.x,threat.y,armyTargeted?expeditionArmy.x:expedition.x,armyTargeted?expeditionArmy.y:expedition.y,true);
         const armyNear=armyTargeted;
         if(armyNear){
-          const liveSoldiers=expeditionArmy.soldiers.filter(function(s){return s.health>0});
-          const liveVehicles=expeditionArmy.vehicles.filter(function(v){return v.health>0});
-          if(liveSoldiers.length){
-            const s=liveSoldiers[Math.floor(Math.random()*liveSoldiers.length)];
-            s.health=Math.max(0,s.health-9);
-          }else if(liveVehicles.length){
-            const v=liveVehicles[Math.floor(Math.random()*liveVehicles.length)];
-            v.health=Math.max(0,v.health-8);
-          }
-          expeditionArmy.health=
-            expeditionArmy.vehicles.reduce(function(n,v){return n+v.health},0)+
-            expeditionArmy.soldiers.reduce(function(n,s){return n+s.health},0);
-
-          if(expeditionArmy.health<=0){
-            statusEl.textContent="Army convoy destroyed. Returning surviving forces.";
-            expeditionArmy.health=expeditionArmy.maxHealth;
-            expeditionArmy.vehicles.forEach(function(v){v.health=v.maxHealth});
-            expeditionArmy.soldiers.forEach(function(s){s.health=s.maxHealth});
-            expeditionArmy.x=innerWidth*.5;
-            expeditionArmy.y=innerHeight*.9;
-            expeditionArmy.targetCamp=null;
-          }
+          // Camp monsters damage the convoy through their timed claw strikes.
         }else{
           expedition.health=Math.max(0,expedition.health-6);
+          combatHit(expedition.x,expedition.y,6,true);
           if(expedition.health<=0){
             statusEl.textContent="Expedition defeated. Emergency return to base.";
             expedition.health=100;
