@@ -1311,8 +1311,19 @@ function downloadLayoutData(){
 document.getElementById("copyLayoutBtn").onclick=copyLayoutData;
 document.getElementById("downloadLayoutBtn").onclick=downloadLayoutData;
 
+const sectorFactions={
+  1:{name:"Mars Raiders",tag:"RAIDERS",unitColor:"#6d3b36",dark:"#21191a",accent:"#d95b42",reward:1.00,
+     camps:["Raider Camp Alpha","Raider Camp Beta","Raider Camp Gamma"],patrolSpeed:1.00,patrolDamage:1.00},
+  2:{name:"Red Horizon",tag:"RED HORIZON",unitColor:"#7a2d2b",dark:"#271416",accent:"#ff6b50",reward:1.25,
+     camps:["Red Horizon Outpost","Red Horizon Bastion","Red Horizon Armor Depot"],patrolSpeed:.92,patrolDamage:1.25},
+  3:{name:"Helios Corporation",tag:"HELIOS CORP",unitColor:"#344b62",dark:"#101820",accent:"#6fc7ff",reward:1.55,
+     camps:["Helios Relay Site","Helios Drone Works","Helios Command Vault"],patrolSpeed:1.12,patrolDamage:1.45}
+};
 function sectorName(n){
   return ["","Frontier Basin","Crimson Highlands","Valles Warzone"][n]||("Sector "+n);
+}
+function currentFaction(){
+  return sectorFactions[campaign.selectedSector]||sectorFactions[1];
 }
 function refreshSectorMap(){
   document.querySelectorAll(".sector-btn").forEach(function(btn){
@@ -1323,25 +1334,30 @@ function refreshSectorMap(){
     btn.disabled=!unlocked;
   });
   const el=document.getElementById("sectorStatus");
-  if(el)el.textContent="Sector "+campaign.selectedSector+" • "+sectorName(campaign.selectedSector);
+  const faction=currentFaction();
+  if(el)el.textContent="Sector "+campaign.selectedSector+" • "+sectorName(campaign.selectedSector)+" • "+faction.name;
 }
 function selectSector(n){
   if(n>campaign.sector||n<1||n>3)return;
   campaign.selectedSector=n;
+  const faction=currentFaction();
   outsideEnemyCamps.forEach(function(c,i){
-    const scale=1+(n-1)*.28;
+    const scale=1+(n-1)*.34;
+    c.name=faction.camps[i]||("Faction Camp "+(i+1));
+    c.faction=faction.name;
     c.maxHealth=Math.round([120,150,110][i]*scale);
     c.health=c.maxHealth;
     c.active=true;
-    c.units.forEach(function(u){
+    c.units.forEach(function(u,j){
       const base=[40,45,35][Math.min(i,2)]||40;
-      u.maxHp=Math.round(Math.max(base,u.maxHp)*scale);
+      const eliteBoost=(n===3&&j===c.units.length-1)?1.35:1;
+      u.maxHp=Math.round(Math.max(base,u.maxHp)*scale*eliteBoost);
       u.hp=u.maxHp;u.cooldown=0;
     });
   });
   resetEnemyPatrols();
   refreshSectorMap();saveGame();
-  statusEl.textContent="Entered "+sectorName(n)+". Enemy strength increased.";
+  statusEl.textContent="Entered "+sectorName(n)+" • "+faction.name+" controls this region.";
 }
 document.querySelectorAll(".sector-btn").forEach(function(btn){
   btn.onclick=function(){selectSector(+btn.dataset.sector)};
@@ -1382,13 +1398,13 @@ const outsideNodes=[
   {type:"rare",sprite:"rare_minerals.png",x:.52,y:.20,amount:10,active:true}
 ];
 const outsideEnemyCamps=[
-  {x:.17,y:.18,size:1.0,name:"Raider Camp Alpha",health:120,maxHealth:120,active:true,units:[
+  {x:.17,y:.18,size:1.0,name:"Raider Camp Alpha",faction:"Mars Raiders",health:120,maxHealth:120,active:true,units:[
     {ox:-46,oy:38,hp:40,maxHp:40,cooldown:0},{ox:44,oy:32,hp:40,maxHp:40,cooldown:0},{ox:0,oy:58,hp:55,maxHp:55,cooldown:0}
   ]},
-  {x:.80,y:.30,size:1.12,name:"Raider Camp Beta",health:150,maxHealth:150,active:true,units:[
+  {x:.80,y:.30,size:1.12,name:"Raider Camp Beta",faction:"Mars Raiders",health:150,maxHealth:150,active:true,units:[
     {ox:-52,oy:36,hp:45,maxHp:45,cooldown:0},{ox:48,oy:40,hp:45,maxHp:45,cooldown:0},{ox:0,oy:62,hp:60,maxHp:60,cooldown:0}
   ]},
-  {x:.68,y:.76,size:.96,name:"Raider Camp Gamma",health:110,maxHealth:110,active:true,units:[
+  {x:.68,y:.76,size:.96,name:"Raider Camp Gamma",faction:"Mars Raiders",health:110,maxHealth:110,active:true,units:[
     {ox:-42,oy:34,hp:35,maxHp:35,cooldown:0},{ox:38,oy:30,hp:35,maxHp:35,cooldown:0}
   ]}
 ];
@@ -1405,32 +1421,36 @@ function drawEnemyUnit(camp,u){
   ctx.save();
   ctx.translate(x,y);
   ctx.rotate(a+Math.PI/2);
-  ctx.fillStyle="#6d3b36";
+  const faction=currentFaction();
+  ctx.fillStyle=faction.unitColor;
   ctx.beginPath();ctx.arc(0,-8,5,0,Math.PI*2);ctx.fill();
   ctx.fillRect(-5,-2,10,15);
-  ctx.fillStyle="#21191a";
+  ctx.fillStyle=faction.dark;
   ctx.fillRect(3,1,14,3);
-  ctx.fillStyle="#4b2b29";
+  ctx.fillStyle=currentFaction().accent;
   ctx.fillRect(-7,11,5,9);ctx.fillRect(2,11,5,9);
   ctx.restore();
-  drawHealthBar(x,y-26,34,5,u.hp/u.maxHp,"#d85b4b");
+  drawHealthBar(x,y-26,34,5,u.hp/u.maxHp,currentFaction().accent);
 }
 function drawEnemyCamp(camp){
   if(!camp.active)return;
   const p=campScreenPos(camp),x=p.x,y=p.y,s=GRID*camp.size;
   ctx.save();
-  ctx.fillStyle="rgba(82,24,18,.38)";
+  const faction=currentFaction();
+  ctx.fillStyle=campaign.selectedSector===3?"rgba(28,53,72,.40)":(campaign.selectedSector===2?"rgba(92,24,22,.42)":"rgba(82,24,18,.38)");
   ctx.beginPath();ctx.ellipse(x,y+18,s*.92,s*.48,0,0,Math.PI*2);ctx.fill();
   drawImageCentered(images["BB/habitat_dome_small.png"]?"BB/habitat_dome_small.png":"habitat_small.png",x,y,s*1.45,s*1.15);
   drawImageCentered("resource_crate.png",x-s*.55,y+s*.24,s*.4,s*.4);
   drawImageCentered("barrel.png",x+s*.55,y+s*.20,s*.32,s*.32);
   liveCampUnits(camp).forEach(function(u){drawEnemyUnit(camp,u)});
-  drawHealthBar(x,y-s*.62,110,7,camp.health/camp.maxHealth,"#e36a4f");
+  drawHealthBar(x,y-s*.62,110,7,camp.health/camp.maxHealth,faction.accent);
   ctx.fillStyle="rgba(20,8,8,.86)";
   ctx.beginPath();ctx.roundRect(x-58,y-s*.86,116,22,7);ctx.fill();
-  ctx.strokeStyle="#d95b42";ctx.stroke();
-  ctx.fillStyle="#ffb09e";ctx.font="bold 10px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
-  ctx.fillText(camp.name,x,y-s*.86+11);
+  ctx.strokeStyle=faction.accent;ctx.stroke();
+  ctx.fillStyle=faction.accent;ctx.font="bold 10px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText(camp.name,x,y-s*.86+9);
+  ctx.font="bold 7px Arial";ctx.fillStyle="#d9e0e5";
+  ctx.fillText(faction.tag,x,y-s*.86+18);
   ctx.restore();
 }
 function resetOutsideNodes(){outsideNodes.forEach(function(n){n.active=true})}
@@ -1491,17 +1511,18 @@ function updateEnemyPatrols(dt){
     if(expeditionArmy.targetCamp===camp)v.launched=true;
     if(!v.launched)return;
 
+    const faction=currentFaction();
     const dx=expeditionArmy.x-v.x,dy=expeditionArmy.y-v.y,dist=Math.hypot(dx,dy);
     if(dist>105){
-      v.x+=dx/dist*v.speed*dt;
-      v.y+=dy/dist*v.speed*dt;
+      v.x+=dx/dist*v.speed*faction.patrolSpeed*dt;
+      v.y+=dy/dist*v.speed*faction.patrolSpeed*dt;
       return;
     }
 
     if(v.cooldown>0)v.cooldown-=dt;
     if(v.cooldown<=0){
       spawnTracer(v.x,v.y,expeditionArmy.x,expeditionArmy.y,true);
-      damageArmyFromPatrol(10);
+      damageArmyFromPatrol(Math.round(10*currentFaction().patrolDamage));
       v.cooldown=1.15;
       statusEl.textContent="Enemy patrol vehicle intercepting the convoy.";
       if(expeditionArmy.health<=0){
@@ -1523,10 +1544,10 @@ function drawEnemyPatrols(){
     const angle=Math.atan2(expeditionArmy.y-v.y,expeditionArmy.x-v.x);
     drawRotated("rover.png",v.x,v.y,GRID*.82,GRID*.60,angle+Math.PI/2);
     ctx.save();
-    ctx.strokeStyle="#d95b42";ctx.lineWidth=2;
+    ctx.strokeStyle=currentFaction().accent;ctx.lineWidth=2;
     ctx.beginPath();ctx.arc(v.x,v.y,25,0,Math.PI*2);ctx.stroke();
     ctx.restore();
-    drawHealthBar(v.x,v.y-30,44,5,v.health/v.maxHealth,"#d85b4b");
+    drawHealthBar(v.x,v.y-30,44,5,v.health/v.maxHealth,currentFaction().accent);
   });
 }
 function campThreatLabel(camp){
@@ -1536,8 +1557,12 @@ function campThreatLabel(camp){
 function advanceSectorIfCleared(){
   if(outsideEnemyCamps.some(function(c){return c.active}))return;
   campaign.sector=Math.min(3,campaign.sector+1);
+  campaign.selectedSector=campaign.sector;
+  const faction=currentFaction();
   campaign.nextRaid=Math.max(28,55-campaign.sector*4);
   outsideEnemyCamps.forEach(function(c,i){
+    c.name=faction.camps[i]||c.name;
+    c.faction=faction.name;
     c.maxHealth=Math.round(c.maxHealth*(1.18+campaign.sector*.03));
     c.health=c.maxHealth;
     c.active=true;
@@ -1547,7 +1572,8 @@ function advanceSectorIfCleared(){
     });
   });
   resetEnemyPatrols();
-  statusEl.textContent="Sector "+campaign.sector+" unlocked. Enemy camps have reinforced.";
+  refreshSectorMap();
+  statusEl.textContent="Sector "+campaign.sector+" unlocked • "+currentFaction().name+" now controls the battlefield.";
   saveGame();
 }
 function campAtPoint(x,y){
@@ -1565,7 +1591,7 @@ function dispatchArmyToCamp(camp){
   expeditionArmy.active=true;
   expeditionArmy.moveSpeed=0;
   livePatrolsForCamp(camp).forEach(function(v){v.launched=true});
-  statusEl.textContent="Army convoy dispatched to "+camp.name+" • Threat "+campThreatLabel(camp)+" • Enemy patrols mobilizing.";
+  statusEl.textContent="Army dispatched against "+currentFaction().name+" • "+camp.name+" • Threat "+campThreatLabel(camp)+".";
   return true;
 }
 function updateArmy(dt){
@@ -1639,8 +1665,9 @@ function updateArmy(dt){
     if(camp.health<=0){
       spawnExplosion(cp.x,cp.y,42);
       camp.active=false;
-      const lootIron=14+campaign.sector*4;
-      const lootCredits=70+campaign.sector*20;
+      const faction=currentFaction();
+      const lootIron=Math.round((14+campaign.selectedSector*4)*faction.reward);
+      const lootCredits=Math.round((70+campaign.selectedSector*20)*faction.reward);
       expedition.cargo=Math.min(expedition.capacity,expedition.cargo+lootIron);
       colony.credits+=lootCredits;
       campaign.campsCleared++;
