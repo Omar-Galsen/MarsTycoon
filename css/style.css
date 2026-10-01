@@ -58,3 +58,33 @@ body.layout-mode.dragging #game{cursor:grabbing}
 #eraseFortBtn.active{background:#9b322c;border-color:#ef6a62}
 #fortStatus{margin-top:6px;padding:5px 7px;border-radius:6px;background:#171b1f;color:#c9cfd5;font-size:8px}
 body.layout-mode.fort-placement #game{cursor:crosshair}
+
+
+/* FIRST-RUN TUTORIAL */
+.tutorial-overlay{position:fixed;z-index:250;inset:0;background:rgba(6,8,11,.62);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(1px)}
+.tutorial-overlay.hidden{display:none}
+.tutorial-card{position:relative;z-index:3;width:min(440px,calc(100vw - 28px));background:linear-gradient(180deg,rgba(28,32,38,.99),rgba(12,15,18,.99));border:1px solid rgba(240,197,94,.58);border-radius:16px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.62)}
+.tutorial-kicker{font-size:9px;font-weight:900;letter-spacing:.16em;color:#f0c55e;margin-bottom:8px}
+.tutorial-progress{height:5px;background:#252b31;border-radius:99px;overflow:hidden;margin-bottom:14px}
+#tutorialProgressBar{height:100%;width:0;background:linear-gradient(90deg,#e88a3d,#78df70);transition:width .2s ease}
+.tutorial-card h2{margin:0 0 8px;color:#ffd174;font-size:22px}
+.tutorial-card p{margin:0;color:#e8ecef;font-size:13px;line-height:1.55}
+.tutorial-hint{margin-top:12px;padding:9px 10px;border-radius:9px;background:#1d2329;border:1px solid rgba(255,255,255,.08);color:#aeb8c1;font-size:10px;line-height:1.4}
+.tutorial-actions{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:16px}
+.tutorial-nav{display:flex;gap:7px}
+.tutorial-actions button{border:1px solid #5c646d;background:#242a30;color:#e9edf0;border-radius:8px;padding:8px 12px;font-size:9px;font-weight:900;letter-spacing:.06em;cursor:pointer}
+.tutorial-actions button:disabled{opacity:.35;cursor:default}
+.tutorial-actions .tutorial-next{background:linear-gradient(#d97a31,#9d4c1f);border-color:#e5a45a;color:#fff}
+.tutorial-actions .tutorial-skip{background:transparent;color:#aeb5bb}
+.tutorial-spotlight{position:fixed;z-index:2;border:2px solid #ffd174;border-radius:14px;box-shadow:0 0 0 9999px rgba(6,8,11,.52),0 0 26px rgba(255,209,116,.55);pointer-events:none;opacity:0;transition:left .2s ease,top .2s ease,width .2s ease,height .2s ease,opacity .15s ease}
+body.tutorial-open #game{pointer-events:none}
+body.tutorial-open #topbar,
+body.tutorial-open #missionPanel,
+body.tutorial-open #zoneSwitch,
+body.tutorial-open #buildPanel,
+body.tutorial-open #actionBar{z-index:251}
+@media(max-width:800px){
+  .tutorial-overlay{align-items:flex-end;padding:12px 12px 118px}
+  .tutorial-card{width:100%;padding:15px}
+  .tutorial-card h2{font-size:18px}
+}
