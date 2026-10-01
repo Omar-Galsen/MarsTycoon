@@ -1925,7 +1925,13 @@ function drawArmyConvoy(){
     if(v.health<=0)return;
     const p=transform(v.ox,v.oy);
     const file=i===0?"transport_rover.png":"rover.png";
-    drawRotated(file,p.x,p.y,GRID*(i===0?1.05:.78),GRID*(i===0?.72:.58),angle);
+    const camp=expeditionArmy.targetCamp;
+    const target=camp&&camp.active?campScreenPos(camp):null;
+    const fighting=target&&Math.hypot(target.x-expeditionArmy.x,target.y-expeditionArmy.y)<=150;
+    const facing=fighting?Math.atan2(target.y-p.y,target.x-p.x):angle;
+    // Both rover images have their front at the lower-left (135 degrees).
+    const spriteFrontAngle=3*Math.PI/4;
+    drawRotated(file,p.x,p.y,GRID*(i===0?1.05:.78),GRID*(i===0?.72:.58),facing-spriteFrontAngle);
     drawHealthBar(p.x,p.y-28,40,5,v.health/v.maxHealth,"#79d173");
   });
 
