@@ -257,10 +257,18 @@ function multiplier(b){return 1+(b.level-1)*.45}
 function buildingScore(b){return Math.floor(buildingData[b.type].score*(1+(b.level-1)*.35))}
 function colonyScore(){return 1250+buildings.reduce(function(s,b){return s+buildingScore(b)},0)}
 function upgradeCost(b){const d=buildingData[b.type],L=b.level;return{credits:Math.floor(d.cost*(.75+L*.85)),iron:Math.floor(12+L*18)}}
-function canUpgrade(b){const c=upgradeCost(b);return colony.credits>=c.credits&&colony.iron>=c.iron&&b.level<10}
+function canUpgrade(b){const c=upgradeCost(b);return !isConstructing(b)&&colony.credits>=c.credits&&colony.iron>=c.iron&&b.level<10}
+
+function constructionTimeFor(type){
+  const d=buildingData[type];
+  if(!d)return 8;
+  return Math.max(6,Math.min(30,Math.round(d.cost/35)));
+}
+function isConstructing(b){return (b.constructionRemaining||0)>0}
+function constructionLabel(b){return Math.max(0,Math.ceil(b.constructionRemaining||0))+"s"}
 
 function filteredKeys(){return Object.entries(buildingData).filter(function(entry){return entry[1].category===activeTab&&entry[1].placeable!==false}).map(function(entry){return entry[0]})}
-function buildButtons(){buildMenu.innerHTML="";filteredKeys().forEach(function(key){const data=buildingData[key],locked=colony.hqLevel<data.unlock,button=document.createElement("button");button.className="build-card"+(key===selectedBuilding?" selected":"")+(locked?" locked":"");const primary=data.baseSprite?BASE_ASSET+data.baseSprite:ASSET+data.sprite;button.innerHTML='<img src="'+primary+'" onerror="this.onerror=null;this.src=\''+ASSET+data.sprite+'\'" alt=""><span>'+data.name+"<br>$"+data.cost+"</span>"+(locked?'<div class="level-lock">HQ '+data.unlock+"</div>":"");button.onclick=function(){if(locked){statusEl.textContent="Upgrade Command Hub to Lv."+data.unlock+" first.";return}selectedBuilding=key;selectedPlaced=null;refreshBuildSelection();hideSelectedPanel();statusEl.textContent="Place "+data.name+" on an empty tile."};buildMenu.appendChild(button)})}
+function buildButtons(){buildMenu.innerHTML="";filteredKeys().forEach(function(key){const data=buildingData[key],locked=colony.hqLevel<data.unlock,button=document.createElement("button");button.className="build-card"+(key===selectedBuilding?" selected":"")+(locked?" locked":"");const primary=data.baseSprite?BASE_ASSET+data.baseSprite:ASSET+data.sprite;button.innerHTML='<img src="'+primary+'" onerror="this.onerror=null;this.src=\''+ASSET+data.sprite+'\'" alt=""><span>'+data.name+"<br>$"+data.cost+" • "+constructionTimeFor(key)+"s</span>"+(locked?'<div class="level-lock">HQ '+data.unlock+"</div>":"");button.onclick=function(){if(locked){statusEl.textContent="Upgrade Command Hub to Lv."+data.unlock+" first.";return}selectedBuilding=key;selectedPlaced=null;refreshBuildSelection();hideSelectedPanel();statusEl.textContent="Place "+data.name+" on an empty tile."};buildMenu.appendChild(button)})}
 function refreshBuildSelection(){const keys=filteredKeys();Array.from(buildMenu.children).forEach(function(b,i){b.classList.toggle("selected",keys[i]===selectedBuilding)})}
 document.querySelectorAll(".tab").forEach(function(tab){tab.onclick=function(){document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active")});tab.classList.add("active");activeTab=tab.dataset.tab;buildButtons()}});
 
@@ -423,6 +431,16 @@ function drawBuildings(){
     const size=u*1.95*d.size*scale*customScale;
     if(b.rotation)drawRotated(file,b.x+GRID/2,b.y+GRID/2,size,size,b.rotation*Math.PI/180);
     else drawImageCentered(file,b.x+GRID/2,b.y+GRID/2,size,size);
+    if(isConstructing(b)){
+      const cx=b.x+GRID/2,cy=b.y+GRID/2;
+      ctx.save();
+      ctx.fillStyle="rgba(8,12,16,.72)";
+      ctx.beginPath();ctx.roundRect(cx-42,cy-13,84,26,8);ctx.fill();
+      ctx.strokeStyle="#f0c55e";ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle="#ffd174";ctx.font="bold 11px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.fillText("BUILD "+constructionLabel(b),cx,cy);
+      ctx.restore();
+    }
     ctx.save();ctx.font="bold 10px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
     ctx.fillStyle=index===selectedPlaced?"#74ec69":"rgba(15,18,22,.88)";
     ctx.beginPath();ctx.roundRect(b.x+GRID/2+u*.28,b.y+GRID/2-u*.58,31,18,7);ctx.fill();
@@ -478,7 +496,7 @@ function placeOrSelect(x,y){
   if(gameMode==="layout"){
     const bg=baseGeometry();
     if(x<bg.left+55||x>bg.right-55||y<bg.top+55||y>bg.bottom-70){statusEl.textContent="Place buildings inside the base walls.";return}
-    buildings.push({type:selectedBuilding,plotId:null,sprite:(buildingData[selectedBuilding].baseSprite||buildingData[selectedBuilding].sprite),rotation:0,scale:1,x:x-GRID/2,y:y-GRID/2,level:1});
+    buildings.push({type:selectedBuilding,plotId:null,sprite:(buildingData[selectedBuilding].baseSprite||buildingData[selectedBuilding].sprite),rotation:0,scale:1,x:x-GRID/2,y:y-GRID/2,level:1,constructionRemaining:constructionTimeFor(selectedBuilding)});
     selectedPlaced=buildings.length-1;
     refreshLayoutOutput();
     statusEl.textContent=d.name+" added to custom layout.";
@@ -490,7 +508,7 @@ function placeOrSelect(x,y){
   if(colony.hqLevel<d.unlock){statusEl.textContent="Requires Command Hub Lv."+d.unlock+".";return}
   if(colony.credits<d.cost){statusEl.textContent="Not enough credits.";return}
   colony.credits-=d.cost;
-  buildings.push({type:selectedBuilding,plotId:p.id,sprite:(buildingData[selectedBuilding].baseSprite||buildingData[selectedBuilding].sprite),rotation:0,scale:1,x:p.x-GRID/2,y:p.y-GRID/2,level:1});
+  buildings.push({type:selectedBuilding,plotId:p.id,sprite:(buildingData[selectedBuilding].baseSprite||buildingData[selectedBuilding].sprite),rotation:0,scale:1,x:p.x-GRID/2,y:p.y-GRID/2,level:1,constructionRemaining:constructionTimeFor(selectedBuilding)});
   selectedPlaced=buildings.length-1;
   showSelectedPanel();updateHUD();updateMissions();
   statusEl.textContent=d.name+" constructed.";
@@ -522,12 +540,23 @@ function endLayoutDrag(){if(layoutDragIndex!=null){layoutDragIndex=null;document
 canvas.addEventListener("pointerup",endLayoutDrag);
 canvas.addEventListener("pointercancel",endLayoutDrag);
 
-function showSelectedPanel(){const panel=document.getElementById("selectedPanel"),b=buildings[selectedPlaced];if(!b){panel.classList.add("hidden");return}const d=buildingData[b.type],c=upgradeCost(b),m=multiplier(b);panel.classList.remove("hidden");document.getElementById("selectedSprite").src=(b.sprite&&images["BB/"+b.sprite])?BASE_ASSET+b.sprite:((d.baseSprite&&images["BB/"+d.baseSprite])?BASE_ASSET+d.baseSprite:ASSET+d.sprite);document.getElementById("selectedName").textContent=d.name;document.getElementById("selectedLevel").textContent=b.level;document.getElementById("selectedProgressText").textContent=b.level+"/10";document.getElementById("selectedProgressBar").style.width=(b.level/10*100)+"%";document.getElementById("statProduction").textContent=d.baseProd+" x"+m.toFixed(2);document.getElementById("statPower").textContent=(d.basePower>=0?"+":"")+Math.round(d.basePower*m)+"/s";document.getElementById("statCapacity").textContent=Math.round(d.capacity*m)||"—";document.getElementById("statScore").textContent=buildingScore(b);document.getElementById("upgradeCostText").textContent=b.level>=10?"MAX LEVEL":"$"+c.credits+" + "+c.iron+" iron";const req=document.getElementById("upgradeRequirements");req.innerHTML=b.level>=10?'<span class="req-ok">Maximum building level reached.</span>':'<div class="'+(colony.credits>=c.credits?"req-ok":"req-bad")+'">Credits: '+Math.floor(colony.credits)+" / "+c.credits+'</div><div class="'+(colony.iron>=c.iron?"req-ok":"req-bad")+'">Iron: '+Math.floor(colony.iron)+" / "+c.iron+'</div><div class="req-ok">Command Hub: Lv.'+colony.hqLevel+"</div>";document.getElementById("upgradeBtn").disabled=!canUpgrade(b)}
+function showSelectedPanel(){const panel=document.getElementById("selectedPanel"),b=buildings[selectedPlaced];if(!b){panel.classList.add("hidden");return}const d=buildingData[b.type],c=upgradeCost(b),m=multiplier(b);panel.classList.remove("hidden");document.getElementById("selectedSprite").src=(b.sprite&&images["BB/"+b.sprite])?BASE_ASSET+b.sprite:((d.baseSprite&&images["BB/"+d.baseSprite])?BASE_ASSET+d.baseSprite:ASSET+d.sprite);document.getElementById("selectedName").textContent=d.name;document.getElementById("selectedLevel").textContent=b.level;document.getElementById("selectedProgressText").textContent=b.level+"/10";document.getElementById("selectedProgressBar").style.width=(b.level/10*100)+"%";document.getElementById("statProduction").textContent=isConstructing(b)?("Building • "+constructionLabel(b)):d.baseProd+" x"+m.toFixed(2);document.getElementById("statPower").textContent=(d.basePower>=0?"+":"")+Math.round(d.basePower*m)+"/s";document.getElementById("statCapacity").textContent=Math.round(d.capacity*m)||"—";document.getElementById("statScore").textContent=buildingScore(b);document.getElementById("upgradeCostText").textContent=b.level>=10?"MAX LEVEL":"$"+c.credits+" + "+c.iron+" iron";const req=document.getElementById("upgradeRequirements");req.innerHTML=b.level>=10?'<span class="req-ok">Maximum building level reached.</span>':'<div class="'+(colony.credits>=c.credits?"req-ok":"req-bad")+'">Credits: '+Math.floor(colony.credits)+" / "+c.credits+'</div><div class="'+(colony.iron>=c.iron?"req-ok":"req-bad")+'">Iron: '+Math.floor(colony.iron)+" / "+c.iron+'</div><div class="req-ok">Command Hub: Lv.'+colony.hqLevel+"</div>";document.getElementById("upgradeBtn").disabled=!canUpgrade(b)}
 function hideSelectedPanel(){document.getElementById("selectedPanel").classList.add("hidden")}
 document.getElementById("closeSelected").onclick=function(){selectedPlaced=null;hideSelectedPanel()};
 document.getElementById("upgradeBtn").onclick=function(){const b=buildings[selectedPlaced];if(!b)return;const c=upgradeCost(b);if(!canUpgrade(b)){showSelectedPanel();return}colony.credits-=c.credits;colony.iron-=c.iron;b.level++;if(b.type==="habitat"&&b.level%2===0)colony.population++;if(b.type==="command"){colony.hqLevel=Math.min(3,b.level)}updateHUD();buildButtons();updateMissions();showSelectedPanel();statusEl.textContent=buildingData[b.type].name+" upgraded to Lv."+b.level+"."};
 
-function productionTick(){if(paused)return;buildings.forEach(function(b){const m=multiplier(b);switch(b.type){case"miner":if(colony.power>=m){colony.iron+=2*m;colony.power-=m}break;case"solar":colony.power+=4*m;break;case"solarLarge":colony.power+=10*m;break;case"oxygen":case"lifeSupport":if(colony.power>=2*m){colony.oxygen+=3*m;colony.power-=2*m}break;case"water":case"tanksB":if(colony.power>=2*m){colony.water+=2*m;colony.power-=2*m}break;case"greenhouse":if(colony.power>=2*m){colony.oxygen+=.8*m;colony.power-=2*m}break;case"refinery":if(colony.power>=4*m){colony.credits+=1.25*m;colony.power-=4*m}break;case"roverGarage":colony.power=Math.max(0,colony.power-.25*m);break;case"export":if(colony.iron>=20){colony.iron-=20;colony.credits+=85*m}break}});colony.oxygen=Math.max(0,colony.oxygen-.12*colony.population);colony.water=Math.max(0,colony.water-.07*colony.population);colony.power=Math.max(0,colony.power);updateHUD();if(selectedPlaced!=null)showSelectedPanel();updateMissions()}
+function updateConstruction(dt){
+  buildings.forEach(function(b){
+    if(!isConstructing(b))return;
+    const before=b.constructionRemaining;
+    b.constructionRemaining=Math.max(0,b.constructionRemaining-dt);
+    if(before>0&&b.constructionRemaining<=0){
+      statusEl.textContent=buildingData[b.type].name+" construction complete.";
+      updateHUD();updateMissions();
+    }
+  });
+}
+function productionTick(){if(paused)return;buildings.forEach(function(b){if(isConstructing(b))return;const m=multiplier(b);switch(b.type){case"miner":if(colony.power>=m){colony.iron+=2*m;colony.power-=m}break;case"solar":colony.power+=4*m;break;case"solarLarge":colony.power+=10*m;break;case"oxygen":case"lifeSupport":if(colony.power>=2*m){colony.oxygen+=3*m;colony.power-=2*m}break;case"water":case"tanksB":if(colony.power>=2*m){colony.water+=2*m;colony.power-=2*m}break;case"greenhouse":if(colony.power>=2*m){colony.oxygen+=.8*m;colony.power-=2*m}break;case"refinery":if(colony.power>=4*m){colony.credits+=1.25*m;colony.power-=4*m}break;case"roverGarage":colony.power=Math.max(0,colony.power-.25*m);break;case"export":if(colony.iron>=20){colony.iron-=20;colony.credits+=85*m}break}});colony.oxygen=Math.max(0,colony.oxygen-.12*colony.population);colony.water=Math.max(0,colony.water-.07*colony.population);colony.power=Math.max(0,colony.power);updateHUD();if(selectedPlaced!=null)showSelectedPanel();updateMissions()}
 function updateHUD(){document.getElementById("credits").textContent=Math.floor(colony.credits);document.getElementById("iron").textContent=Math.floor(colony.iron);document.getElementById("water").textContent=Math.floor(colony.water);document.getElementById("oxygen").textContent=Math.floor(colony.oxygen);document.getElementById("power").textContent=Math.floor(colony.power);document.getElementById("population").textContent=colony.population;document.getElementById("hqLabel").textContent="Command Hub Lv."+colony.hqLevel;document.getElementById("colonyPowerScore").textContent=colonyScore().toLocaleString()}
 
 const missions=[{label:"Build 5 structures",value:function(){return buildings.length},target:5},{label:"Upgrade a building to Lv.3",value:function(){return Math.max.apply(null,buildings.map(function(b){return b.level}))},target:3},{label:"Reach 150 iron",value:function(){return Math.floor(colony.iron)},target:150},{label:"Command Hub Lv.2",value:function(){return colony.hqLevel},target:2}];
@@ -610,7 +639,7 @@ function applySavedLayout(layout){
     layout.buildings.forEach(function(x){
       const cx=(typeof x.nx==="number")?b.left+x.nx*b.w:x.x;
       const cy=(typeof x.ny==="number")?b.top+x.ny*b.h:x.y;
-      buildings.push({type:x.type,level:x.level||1,plotId:x.plotId||null,sprite:x.sprite||null,rotation:x.rotation||0,scale:(typeof x.scale==="number"?x.scale:1),x:cx-GRID/2,y:cy-GRID/2});
+      buildings.push({type:x.type,level:x.level||1,plotId:x.plotId||null,sprite:x.sprite||null,rotation:x.rotation||0,scale:(typeof x.scale==="number"?x.scale:1),x:cx-GRID/2,y:cy-GRID/2,constructionRemaining:0});
     });
   }
   if(Array.isArray(layout.fort)){
@@ -644,6 +673,7 @@ function exportLayoutData(){
         plotId:x.plotId||null,
         rotation:x.rotation||0,
         scale:(typeof x.scale==="number"?x.scale:1),
+        constructionRemaining:+(x.constructionRemaining||0).toFixed(1),
         x:Math.round(cx),
         y:Math.round(cy),
         nx:+((cx-b.left)/b.w).toFixed(4),
@@ -703,6 +733,26 @@ const outsideNodes=[
   {type:"regolith",sprite:"regolith.png",x:.28,y:.72,amount:16,active:true},
   {type:"rare",sprite:"rare_minerals.png",x:.52,y:.20,amount:10,active:true}
 ];
+const outsideEnemyCamps=[
+  {x:.17,y:.18,size:1.0,name:"Raider Camp Alpha"},
+  {x:.80,y:.30,size:1.12,name:"Raider Camp Beta"},
+  {x:.68,y:.76,size:.96,name:"Raider Camp Gamma"}
+];
+function drawEnemyCamp(camp){
+  const x=camp.x*innerWidth,y=camp.y*innerHeight,s=GRID*camp.size;
+  ctx.save();
+  ctx.fillStyle="rgba(82,24,18,.38)";
+  ctx.beginPath();ctx.ellipse(x,y+18,s*.92,s*.48,0,0,Math.PI*2);ctx.fill();
+  drawImageCentered(images["BB/habitat_dome_small.png"]?"BB/habitat_dome_small.png":"habitat_small.png",x,y,s*1.45,s*1.15);
+  drawImageCentered("resource_crate.png",x-s*.55,y+s*.24,s*.4,s*.4);
+  drawImageCentered("barrel.png",x+s*.55,y+s*.20,s*.32,s*.32);
+  ctx.fillStyle="rgba(20,8,8,.86)";
+  ctx.beginPath();ctx.roundRect(x-54,y-s*.68,108,22,7);ctx.fill();
+  ctx.strokeStyle="#d95b42";ctx.stroke();
+  ctx.fillStyle="#ffb09e";ctx.font="bold 10px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText(camp.name,x,y-s*.68+11);
+  ctx.restore();
+}
 function resetOutsideNodes(){outsideNodes.forEach(function(n){n.active=true})}
 function updateExpeditionHUD(){
   document.getElementById("cargoText").textContent=Math.floor(expedition.cargo)+" / "+expedition.capacity;
@@ -719,6 +769,7 @@ function drawOutsideTerrain(){
   const tile=images["terrain_2_3.png"]||images["terrain_1_3.png"];
   if(tile){for(let y=0;y<innerHeight;y+=GRID)for(let x=0;x<innerWidth;x+=GRID)ctx.drawImage(tile,x,y,GRID+1,GRID+1)}
   worldProps.slice(0,14).forEach(function(p,i){drawImageCentered(p.sprite,(p.x*1.3+i*37)%innerWidth,(p.y*1.1+i*23)%innerHeight,GRID*.5,GRID*.5)});
+  outsideEnemyCamps.forEach(drawEnemyCamp);
   outsideNodes.forEach(function(n){if(n.active)drawImageCentered(n.sprite,n.x*innerWidth,n.y*innerHeight,GRID*1.25,GRID*1.25)});
   drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawImageCentered("transport_rover.png",innerWidth*.5,innerHeight*.9,GRID*1.2,GRID*.8);
 }
@@ -731,6 +782,11 @@ function updateOutside(dt){
     else{expedition.x+=dx/dist*speedPx*dt;expedition.y+=dy/dist*speedPx*dt}
   }
   if(expedition.harvestCooldown>0)expedition.harvestCooldown-=dt;
+  outsideEnemyCamps.forEach(function(c){
+    if(Math.hypot(expedition.x-c.x*innerWidth,expedition.y-c.y*innerHeight)<110){
+      statusEl.textContent="Enemy camp nearby: "+c.name+". Combat will be added next.";
+    }
+  });
   outsideNodes.forEach(function(n){
     if(!n.active||expedition.harvestCooldown>0)return;
     const nx=n.x*innerWidth,ny=n.y*innerHeight;
@@ -748,7 +804,7 @@ canvas.addEventListener("pointerdown",function(e){
   if(gameMode==="outside"){expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
 },true);
 
-function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
+function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop);setTimeout(function(){startTutorial(false)},250)});
