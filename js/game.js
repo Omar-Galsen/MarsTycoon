@@ -197,49 +197,11 @@ function drawBaseInfrastructure(){
     ctx.fill();
   });
 
-  const rs=baseArt("road_straight.png",null);
-  const rc=baseArt("road_cross.png",null);
-  const corner=baseArt("road_corner.png",null);
-  const roadW=u*1.8, roadH=u*1.0, step=u*1.18;
-
-  if(rs&&images[rs]){
-    // main horizontal road
-    for(let i=-4;i<=4;i++) drawImageCentered(rs,b.cx+i*step,b.cy,roadW,roadH);
-
-    // main vertical road
-    for(let i=-2;i<=2;i++) drawRotated(rs,b.cx,b.cy+i*step,roadW,roadH,Math.PI/2);
-
-    // upper loop
-    for(let i=-3;i<=3;i++) drawImageCentered(rs,b.cx+i*step,b.cy-2.15*u,roadW*.95,roadH*.95);
-    // lower loop
-    for(let i=-3;i<=3;i++) drawImageCentered(rs,b.cx+i*step,b.cy+2.05*u,roadW*.95,roadH*.95);
-
-    // left and right connectors
-    for(let i=-1;i<=1;i++){
-      drawRotated(rs,b.cx-3.55*u,b.cy+i*step,roadW*.95,roadH*.95,Math.PI/2);
-      drawRotated(rs,b.cx+3.55*u,b.cy+i*step,roadW*.95,roadH*.95,Math.PI/2);
-    }
-
-    if(rc&&images[rc]) drawImageCentered(rc,b.cx,b.cy,u*1.9,u*1.9);
-
-    if(corner&&images[corner]){
-      const cs=u*1.4;
-      drawImageCentered(corner,b.cx-3.55*u,b.cy-2.15*u,cs,cs);
-      drawRotated(corner,b.cx+3.55*u,b.cy-2.15*u,cs,cs,Math.PI/2);
-      drawRotated(corner,b.cx-3.55*u,b.cy+2.05*u,cs,cs,-Math.PI/2);
-      drawRotated(corner,b.cx+3.55*u,b.cy+2.05*u,cs,cs,Math.PI);
-    }
-  }
+  // Internal roads removed from the base layout.
 
   // central civic plaza
   const plaza=images["P/Plazas/plaza.png"]?"P/Plazas/plaza.png":baseArt("fountain_plaza.png",null);
   if(plaza&&images[plaza]) drawImageCentered(plaza,b.cx,b.cy,u*3.25,u*2.45);
-
-  // south entrance road to gate
-  if(rs&&images[rs]){
-    drawRotated(rs,b.cx,b.cy+3.0*u,roadW,roadH,Math.PI/2);
-    drawRotated(rs,b.cx,b.cy+3.9*u,roadW,roadH,Math.PI/2);
-  }
 
   // coherent perimeter (automatic only until the player creates a custom fort)
   if(fortPieces.length===0){
