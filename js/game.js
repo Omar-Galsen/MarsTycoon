@@ -125,7 +125,8 @@ function buildButtons(){buildMenu.innerHTML="";filteredKeys().forEach(function(k
 function refreshBuildSelection(){const keys=filteredKeys();Array.from(buildMenu.children).forEach(function(b,i){b.classList.toggle("selected",keys[i]===selectedBuilding)})}
 document.querySelectorAll(".tab").forEach(function(tab){tab.onclick=function(){document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active")});tab.classList.add("active");activeTab=tab.dataset.tab;buildButtons()}});
 
-function buildingSprite(data){
+function buildingSprite(data,placed){
+  if(placed&&placed.sprite&&images["BB/"+placed.sprite])return "BB/"+placed.sprite;
   if(data&&data.baseSprite&&images["BB/"+data.baseSprite])return "BB/"+data.baseSprite;
   return data?data.sprite:null;
 }
@@ -308,9 +309,11 @@ function drawBuildings(){
   buildings.slice().sort(function(a,b){return a.y-b.y}).forEach(function(b){
     const index=buildings.indexOf(b),d=buildingData[b.type],plot=plots.find(function(p){return p.id===b.plotId});
     const scale=(plot&&plot.scale?plot.scale:1)*(1+Math.min((b.level-1)*.022,.15));
-    const file=buildingSprite(d),u=Math.min(baseGeometry().w/12,baseGeometry().h/8);
-    const size=u*1.95*d.size*scale;
-    drawImageCentered(file,b.x+GRID/2,b.y+GRID/2,size,size);
+    const file=buildingSprite(d,b),u=Math.min(baseGeometry().w/12,baseGeometry().h/8);
+    const customScale=(typeof b.scale==="number"?b.scale:1);
+    const size=u*1.95*d.size*scale*customScale;
+    if(b.rotation)drawRotated(file,b.x+GRID/2,b.y+GRID/2,size,size,b.rotation*Math.PI/180);
+    else drawImageCentered(file,b.x+GRID/2,b.y+GRID/2,size,size);
     ctx.save();ctx.font="bold 10px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
     ctx.fillStyle=index===selectedPlaced?"#74ec69":"rgba(15,18,22,.88)";
     ctx.beginPath();ctx.roundRect(b.x+GRID/2+u*.28,b.y+GRID/2-u*.58,31,18,7);ctx.fill();
@@ -366,7 +369,7 @@ function placeOrSelect(x,y){
   if(gameMode==="layout"){
     const bg=baseGeometry();
     if(x<bg.left+55||x>bg.right-55||y<bg.top+55||y>bg.bottom-70){statusEl.textContent="Place buildings inside the base walls.";return}
-    buildings.push({type:selectedBuilding,plotId:null,x:x-GRID/2,y:y-GRID/2,level:1});
+    buildings.push({type:selectedBuilding,plotId:null,sprite:(buildingData[selectedBuilding].baseSprite||buildingData[selectedBuilding].sprite),rotation:0,scale:1,x:x-GRID/2,y:y-GRID/2,level:1});
     selectedPlaced=buildings.length-1;
     refreshLayoutOutput();
     statusEl.textContent=d.name+" added to custom layout.";
@@ -378,7 +381,7 @@ function placeOrSelect(x,y){
   if(colony.hqLevel<d.unlock){statusEl.textContent="Requires Command Hub Lv."+d.unlock+".";return}
   if(colony.credits<d.cost){statusEl.textContent="Not enough credits.";return}
   colony.credits-=d.cost;
-  buildings.push({type:selectedBuilding,plotId:p.id,x:p.x-GRID/2,y:p.y-GRID/2,level:1});
+  buildings.push({type:selectedBuilding,plotId:p.id,sprite:(buildingData[selectedBuilding].baseSprite||buildingData[selectedBuilding].sprite),rotation:0,scale:1,x:p.x-GRID/2,y:p.y-GRID/2,level:1});
   selectedPlaced=buildings.length-1;
   showSelectedPanel();updateHUD();updateMissions();
   statusEl.textContent=d.name+" constructed.";
@@ -410,7 +413,7 @@ function endLayoutDrag(){if(layoutDragIndex!=null){layoutDragIndex=null;document
 canvas.addEventListener("pointerup",endLayoutDrag);
 canvas.addEventListener("pointercancel",endLayoutDrag);
 
-function showSelectedPanel(){const panel=document.getElementById("selectedPanel"),b=buildings[selectedPlaced];if(!b){panel.classList.add("hidden");return}const d=buildingData[b.type],c=upgradeCost(b),m=multiplier(b);panel.classList.remove("hidden");document.getElementById("selectedSprite").src=(d.baseSprite&&images["BB/"+d.baseSprite])?BASE_ASSET+d.baseSprite:ASSET+d.sprite;document.getElementById("selectedName").textContent=d.name;document.getElementById("selectedLevel").textContent=b.level;document.getElementById("selectedProgressText").textContent=b.level+"/10";document.getElementById("selectedProgressBar").style.width=(b.level/10*100)+"%";document.getElementById("statProduction").textContent=d.baseProd+" x"+m.toFixed(2);document.getElementById("statPower").textContent=(d.basePower>=0?"+":"")+Math.round(d.basePower*m)+"/s";document.getElementById("statCapacity").textContent=Math.round(d.capacity*m)||"—";document.getElementById("statScore").textContent=buildingScore(b);document.getElementById("upgradeCostText").textContent=b.level>=10?"MAX LEVEL":"$"+c.credits+" + "+c.iron+" iron";const req=document.getElementById("upgradeRequirements");req.innerHTML=b.level>=10?'<span class="req-ok">Maximum building level reached.</span>':'<div class="'+(colony.credits>=c.credits?"req-ok":"req-bad")+'">Credits: '+Math.floor(colony.credits)+" / "+c.credits+'</div><div class="'+(colony.iron>=c.iron?"req-ok":"req-bad")+'">Iron: '+Math.floor(colony.iron)+" / "+c.iron+'</div><div class="req-ok">Command Hub: Lv.'+colony.hqLevel+"</div>";document.getElementById("upgradeBtn").disabled=!canUpgrade(b)}
+function showSelectedPanel(){const panel=document.getElementById("selectedPanel"),b=buildings[selectedPlaced];if(!b){panel.classList.add("hidden");return}const d=buildingData[b.type],c=upgradeCost(b),m=multiplier(b);panel.classList.remove("hidden");document.getElementById("selectedSprite").src=(b.sprite&&images["BB/"+b.sprite])?BASE_ASSET+b.sprite:((d.baseSprite&&images["BB/"+d.baseSprite])?BASE_ASSET+d.baseSprite:ASSET+d.sprite);document.getElementById("selectedName").textContent=d.name;document.getElementById("selectedLevel").textContent=b.level;document.getElementById("selectedProgressText").textContent=b.level+"/10";document.getElementById("selectedProgressBar").style.width=(b.level/10*100)+"%";document.getElementById("statProduction").textContent=d.baseProd+" x"+m.toFixed(2);document.getElementById("statPower").textContent=(d.basePower>=0?"+":"")+Math.round(d.basePower*m)+"/s";document.getElementById("statCapacity").textContent=Math.round(d.capacity*m)||"—";document.getElementById("statScore").textContent=buildingScore(b);document.getElementById("upgradeCostText").textContent=b.level>=10?"MAX LEVEL":"$"+c.credits+" + "+c.iron+" iron";const req=document.getElementById("upgradeRequirements");req.innerHTML=b.level>=10?'<span class="req-ok">Maximum building level reached.</span>':'<div class="'+(colony.credits>=c.credits?"req-ok":"req-bad")+'">Credits: '+Math.floor(colony.credits)+" / "+c.credits+'</div><div class="'+(colony.iron>=c.iron?"req-ok":"req-bad")+'">Iron: '+Math.floor(colony.iron)+" / "+c.iron+'</div><div class="req-ok">Command Hub: Lv.'+colony.hqLevel+"</div>";document.getElementById("upgradeBtn").disabled=!canUpgrade(b)}
 function hideSelectedPanel(){document.getElementById("selectedPanel").classList.add("hidden")}
 document.getElementById("closeSelected").onclick=function(){selectedPlaced=null;hideSelectedPanel()};
 document.getElementById("upgradeBtn").onclick=function(){const b=buildings[selectedPlaced];if(!b)return;const c=upgradeCost(b);if(!canUpgrade(b)){showSelectedPanel();return}colony.credits-=c.credits;colony.iron-=c.iron;b.level++;if(b.type==="habitat"&&b.level%2===0)colony.population++;if(b.type==="command"){colony.hqLevel=Math.min(3,b.level)}updateHUD();buildButtons();updateMissions();showSelectedPanel();statusEl.textContent=buildingData[b.type].name+" upgraded to Lv."+b.level+"."};
@@ -498,7 +501,7 @@ function applySavedLayout(layout){
     layout.buildings.forEach(function(x){
       const cx=(typeof x.nx==="number")?b.left+x.nx*b.w:x.x;
       const cy=(typeof x.ny==="number")?b.top+x.ny*b.h:x.y;
-      buildings.push({type:x.type,level:x.level||1,plotId:null,x:cx-GRID/2,y:cy-GRID/2});
+      buildings.push({type:x.type,level:x.level||1,plotId:x.plotId||null,sprite:x.sprite||null,rotation:x.rotation||0,scale:(typeof x.scale==="number"?x.scale:1),x:cx-GRID/2,y:cy-GRID/2});
     });
   }
   if(Array.isArray(layout.fort)){
@@ -527,8 +530,11 @@ function exportLayoutData(){
       const cx=x.x+GRID/2,cy=x.y+GRID/2;
       return {
         type:x.type,
+        sprite:x.sprite||(buildingData[x.type].baseSprite||buildingData[x.type].sprite),
         level:x.level,
         plotId:x.plotId||null,
+        rotation:x.rotation||0,
+        scale:(typeof x.scale==="number"?x.scale:1),
         x:Math.round(cx),
         y:Math.round(cy),
         nx:+((cx-b.left)/b.w).toFixed(4),
