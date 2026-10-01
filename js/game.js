@@ -428,7 +428,11 @@ document.getElementById("speedBtn").onclick=function(){speed=speed===1?2:1;statu
 document.getElementById("menuBtn").onclick=function(){document.getElementById("catalog").classList.remove("hidden")};
 document.getElementById("closeCatalog").onclick=function(){document.getElementById("catalog").classList.add("hidden")};
 
-function fortSprite(type){
+function fortSprite(type,sprite){
+  if(sprite){
+    const key="P/Walls/"+sprite;
+    if(images[key])return key;
+  }
   if(type==="wall")return images["P/Walls/wall_straight_custom.png"]?"P/Walls/wall_straight_custom.png":(images["P/Walls/wall_straight.png"]?"P/Walls/wall_straight.png":baseArt("wall_straight.png","wall_2.png"));
   if(type==="corner")return images["P/Walls/wall_corner.png"]?"P/Walls/wall_corner.png":baseArt("wall_corner.png","wall_4.png");
   if(type==="tower")return images["P/Walls/wall_tower.png"]?"P/Walls/wall_tower.png":baseArt("wall_tower.png",null);
@@ -448,7 +452,7 @@ function snapFortPoint(x,y){
 }
 function drawCustomFort(){
   fortPieces.forEach(function(p){
-    const file=fortSprite(p.type),s=fortSize(p.type);
+    const file=fortSprite(p.type,p.sprite),s=fortSize(p.type);
     if(file)drawRotated(file,p.x,p.y,s.w,s.h,p.rotation*Math.PI/180);
   });
 }
@@ -466,7 +470,7 @@ function placeFortPiece(x,y){
   }
   if(fortTool==="none")return false;
   const p=snapFortPoint(x,y);
-  fortPieces.push({type:fortTool,x:p.x,y:p.y,rotation:fortRotation});
+  fortPieces.push({type:fortTool,sprite:fortTool==="wall"?"wall_straight_custom.png":null,x:p.x,y:p.y,rotation:fortRotation});
   refreshLayoutOutput();
   statusEl.textContent=fortTool+" placed.";
   return true;
@@ -502,6 +506,7 @@ function applySavedLayout(layout){
     layout.fort.forEach(function(p){
       fortPieces.push({
         type:p.type,
+        sprite:p.sprite||null,
         x:(typeof p.nx==="number")?b.left+p.nx*b.w:p.x,
         y:(typeof p.ny==="number")?b.top+p.ny*b.h:p.y,
         rotation:p.rotation||0
@@ -517,7 +522,7 @@ function exportLayoutData(){
     version:1,
     canvas:{width:Math.round(innerWidth),height:Math.round(innerHeight)},
     base:{left:Math.round(b.left),top:Math.round(b.top),width:Math.round(b.w),height:Math.round(b.h)},
-    fort:fortPieces.map(function(p){return {type:p.type,x:Math.round(p.x),y:Math.round(p.y),nx:+((p.x-b.left)/b.w).toFixed(4),ny:+((p.y-b.top)/b.h).toFixed(4),rotation:p.rotation};}),
+    fort:fortPieces.map(function(p){return {type:p.type,sprite:p.sprite||null,x:Math.round(p.x),y:Math.round(p.y),nx:+((p.x-b.left)/b.w).toFixed(4),ny:+((p.y-b.top)/b.h).toFixed(4),rotation:p.rotation};}),
     buildings:buildings.map(function(x){
       const cx=x.x+GRID/2,cy=x.y+GRID/2;
       return {
