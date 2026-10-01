@@ -189,7 +189,7 @@ function saveGame(){
   try{
     const army=Object.assign({},expeditionArmy,{targetCamp:null});
     const raid=Object.assign({},baseRaid,{
-      enemies:baseRaid.enemies.map(function(e){const copy=Object.assign({},e);copy.attackVictimIndex=baseRaid.defenders.indexOf(e.attackVictim);delete copy.attackVictim;return copy;}),
+      enemies:baseRaid.enemies.map(function(e){const copy=Object.assign({},e);copy.attackVictimIndex=baseRaid.defenders.indexOf(e.attackVictim);copy.attackFortIndex=fortPieces.indexOf(e.attackFort);delete copy.attackVictim;delete copy.attackFort;return copy;}),
       defenders:baseRaid.defenders.map(function(d){const copy=Object.assign({},d);delete copy.target;return copy;})
     });
     localStorage.setItem(GAME_SAVE_KEY,JSON.stringify({
@@ -224,7 +224,7 @@ function loadGame(){
       if(Array.isArray(data.fortPieces))fortPieces.splice(0,fortPieces.length,...data.fortPieces);
       if(data.expedition){Object.assign(expedition,data.expedition);reposition(expedition);expedition.targetX=null;expedition.targetY=null;}
       if(data.army){Object.assign(expeditionArmy,data.army);reposition(expeditionArmy);expeditionArmy.targetCamp=outsideEnemyCamps[data.armyCampIndex]||null;}
-      if(data.raid){Object.assign(baseRaid,data.raid);baseRaid.enemies.forEach(function(e){reposition(e);e.attackVictim=baseRaid.defenders[e.attackVictimIndex]||null;delete e.attackVictimIndex;});baseRaid.defenders.forEach(function(d){reposition(d);d.target=null;});}
+      if(data.raid){Object.assign(baseRaid,data.raid);baseRaid.enemies.forEach(function(e){reposition(e);e.attackVictim=baseRaid.defenders[e.attackVictimIndex]||null;e.attackFort=fortPieces[e.attackFortIndex]||null;delete e.attackFortIndex;delete e.attackVictimIndex;});baseRaid.defenders.forEach(function(d){reposition(d);d.target=null;});}
       if(data.battleActions)Object.assign(battleActions,data.battleActions);
       if(Array.isArray(data.nodes))data.nodes.forEach(function(n,i){if(outsideNodes[i])Object.assign(outsideNodes[i],n)});
       restoredMode=baseRaid.active?"base":(data.mode==="outside"?"outside":"base");
@@ -357,6 +357,7 @@ document.getElementById("zoneSwitch").appendChild(tutorialHelpBtn);
 
 
 const buildingData={
+turret:{name:"Defense Turret",cost:300,ironCost:30,sprite:"life_support_tower.png",size:.8,category:"utility",unlock:1,baseProd:"Damage 18 / shot • Range 240",basePower:0,capacity:0,score:120},
 command:{name:"Command Center",cost:500,sprite:"command_center.png",baseSprite:"command_center.png",size:1.85,category:"utility",unlock:1,baseProd:"Colony HQ",basePower:-2,capacity:0,score:300,placeable:false},
 greenhouse:{name:"Greenhouse",cost:320,sprite:"greenhouse_1.png",baseSprite:"greenhouse_complex.png",size:1.25,category:"life",unlock:1,baseProd:"Food +3/s",basePower:-2,capacity:35,score:125},
 refinery:{name:"Refinery",cost:460,sprite:"refinery.png",baseSprite:"industrial_refinery.png",size:1.35,category:"economy",unlock:2,baseProd:"Ore value +25%",basePower:-4,capacity:80,score:180},
@@ -771,6 +772,37 @@ function updateColonyDefenseAI(dt){
     }
   });
 }
+
+function fortMaxHealth(p){return p.type==="gate"?220:160;}
+function fortHealth(p){return typeof p.hp==="number"?p.hp:fortMaxHealth(p);}
+function fortBlockerAt(x,y){
+  return fortPieces.find(function(p){
+    if(fortHealth(p)<=0)return false;
+    const a=(p.rotation||0)*Math.PI/180,dx=x-p.x,dy=y-p.y;
+    const lx=dx*Math.cos(a)+dy*Math.sin(a),ly=-dx*Math.sin(a)+dy*Math.cos(a),size=fortSize(p.type);
+    return Math.abs(lx)<size.w/2+16&&Math.abs(ly)<size.h*.25+16;
+  })||null;
+}
+function updatePlacedTurrets(dt){
+  buildings.filter(function(b){return b.type==="turret"&&!isConstructing(b)}).forEach(function(b){
+    b.fireCooldown=Math.max(0,(b.fireCooldown||0)-dt);
+    const x=b.x+GRID/2,y=b.y+GRID/2,threat=nearestRaidEnemy(x,y);
+    if(!threat||threat.d>240+(b.level-1)*12||b.fireCooldown>0)return;
+    b.aim=Math.atan2(threat.enemy.y-y,threat.enemy.x-x);
+    spawnTracer(x,y,threat.enemy.x,threat.enemy.y,false);
+    threat.enemy.hp=Math.max(0,threat.enemy.hp-(18+(b.level-1)*6+researchState.military*3));
+    if(threat.enemy.hp<=0){threat.enemy.active=false;spawnExplosion(threat.enemy.x,threat.enemy.y,18);}
+    b.fireCooldown=Math.max(.25,.8-(b.level-1)*.045);
+  });
+}
+function drawPlacedTurret(b,size){
+  ctx.save();ctx.translate(b.x+GRID/2,b.y+GRID/2);
+  ctx.fillStyle="#354650";ctx.strokeStyle="#81c6d4";ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(0,0,size*.28,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.rotate(b.aim??Math.PI/2);ctx.fillStyle="#94aab2";ctx.fillRect(0,-size*.07,size*.46,size*.14);
+  ctx.fillStyle="#ffd174";ctx.fillRect(size*.38,-size*.09,size*.1,size*.18);ctx.restore();
+}
+
 function updateBaseRaid(dt){
   if(!baseRaid.active)return;
   const b=baseGeometry();
@@ -781,6 +813,7 @@ function updateBaseRaid(dt){
   battleActions.deployCooldown=Math.max(0,battleActions.deployCooldown-dt);
   baseRaid.bannerTime=Math.max(0,(baseRaid.bannerTime||0)-dt);
   updateColonyDefenseAI(dt);
+  updatePlacedTurrets(dt);
 
   baseRaid.enemies.forEach(function(e){
     if(!e.active||e.hp<=0)return;
@@ -799,7 +832,11 @@ function updateBaseRaid(dt){
       e.attackElapsed+=dt;
       // The claw hits on frame 5, after the wind-up.
       if(previous<.44&&e.attackElapsed>=.44){
-        if(e.attackVictim){
+        if(e.attackFort){
+          const wall=e.attackFort;
+          wall.hp=Math.max(0,fortHealth(wall)-14);
+          spawnExplosion(e.x,e.y,10);
+        }else if(e.attackVictim){
           const victim=e.attackVictim;
           if(victim.active&&victim.hp>0&&Math.hypot(victim.x-e.x,victim.y-e.y)<115){
             victim.hp=Math.max(0,victim.hp-10);
@@ -811,10 +848,12 @@ function updateBaseRaid(dt){
           spawnExplosion(gateX,gateY,12);
         }
       }
-      if(e.attackElapsed>=.88){e.attackElapsed=null;e.attackVictim=null;e.cooldown=.65;}
+      if(e.attackElapsed>=.88){e.attackElapsed=null;e.attackVictim=null;e.attackFort=null;e.cooldown=.65;}
     }else if(dist>(targetDefender?75:55)){
-      e.x+=dx/dist*e.speed*dt;
-      e.y+=dy/dist*e.speed*dt;
+      const nx=e.x+dx/dist*e.speed*dt,ny=e.y+dy/dist*e.speed*dt;
+      const blocker=fortBlockerAt(nx,ny);
+      if(blocker){e.cooldown-=dt;if(e.cooldown<=0){e.attackElapsed=0;e.attackVictim=null;e.attackFort=blocker;}}
+      else{e.x=nx;e.y=ny;}
     }else{
       e.cooldown-=dt;
       if(e.cooldown<=0){e.attackElapsed=0;e.attackVictim=targetDefender;}
@@ -1101,7 +1140,8 @@ function drawBuildings(){
     const file=buildingSprite(d,b),u=Math.min(baseGeometry().w/12,baseGeometry().h/8);
     const customScale=(typeof b.scale==="number"?b.scale:1);
     const size=u*1.95*d.size*scale*customScale*.72;
-    if(b.rotation)drawRotated(file,b.x+GRID/2,b.y+GRID/2,size,size,b.rotation*Math.PI/180);
+    if(b.type==="turret")drawPlacedTurret(b,size);
+    else if(b.rotation)drawRotated(file,b.x+GRID/2,b.y+GRID/2,size,size,b.rotation*Math.PI/180);
     else drawImageCentered(file,b.x+GRID/2,b.y+GRID/2,size,size);
     if(isConstructing(b)){
       const cx=b.x+GRID/2,cy=b.y+GRID/2;
@@ -1170,9 +1210,11 @@ function placeOrSelect(x,y){
   }
   if(lockedExpansionAt(x,y)){statusEl.textContent="Expansion area locked. Research Engineering to Lv.5.";return;}
   const d=buildingData[selectedBuilding];
+  if(d&&d.ironCost&&colony.iron<d.ironCost){statusEl.textContent="Turret needs "+d.ironCost+" iron.";return;}
   if(gameMode==="layout"){
     const bg=baseGeometry();
     if(x<bg.left+55||x>bg.right-55||y<bg.top+55||y>bg.bottom-70){statusEl.textContent="Place buildings inside the base walls.";return}
+    if(selectedBuilding==="turret"){if(colony.credits<d.cost){statusEl.textContent="Turret needs $"+d.cost+".";return;}colony.credits-=d.cost;colony.iron-=d.ironCost;updateHUD();}
     buildings.push({type:selectedBuilding,plotId:null,sprite:(buildingData[selectedBuilding].baseSprite||buildingData[selectedBuilding].sprite),rotation:0,scale:1,x:x-GRID/2,y:y-GRID/2,level:1,constructionRemaining:constructionTimeFor(selectedBuilding)});
     selectedPlaced=buildings.length-1;
     refreshLayoutOutput();
@@ -1186,6 +1228,7 @@ function placeOrSelect(x,y){
   if(colony.hqLevel<d.unlock){statusEl.textContent="Requires Command Hub Lv."+d.unlock+".";return}
   if(colony.credits<d.cost){statusEl.textContent="Not enough credits.";return}
   colony.credits-=d.cost;
+  if(d.ironCost)colony.iron-=d.ironCost;
   buildings.push({type:selectedBuilding,plotId:p.id,sprite:(buildingData[selectedBuilding].baseSprite||buildingData[selectedBuilding].sprite),rotation:0,scale:1,x:p.x-GRID/2,y:p.y-GRID/2,level:1,constructionRemaining:constructionTimeFor(selectedBuilding)});
   selectedPlaced=buildings.length-1;
   showSelectedPanel();updateHUD();updateMissions();
@@ -1343,7 +1386,10 @@ function snapFortPoint(x,y){
 function drawCustomFort(){
   fortPieces.forEach(function(p){
     const file=fortSprite(p.type,p.sprite),s=fortSize(p.type);
+    ctx.save();if(fortHealth(p)<=0)ctx.globalAlpha=.22;
     if(file)drawRotated(file,p.x,p.y,s.w,s.h,p.rotation*Math.PI/180);
+    ctx.restore();
+    if(fortHealth(p)<fortMaxHealth(p))drawHealthBar(p.x,p.y-20,40,4,fortHealth(p)/fortMaxHealth(p),"#e7a055");
   });
 }
 function fortPieceAt(x,y){
@@ -1359,7 +1405,12 @@ function placeFortPiece(x,y){
     return;
   }
   if(fortTool==="none")return false;
+  const existing=fortPieceAt(x,y);
+  if(existing>=0){const wall=fortPieces[existing];if(fortHealth(wall)<fortMaxHealth(wall)){if(colony.iron<20){statusEl.textContent="Wall repair needs 20 iron.";return false;}colony.iron-=20;wall.hp=fortMaxHealth(wall);updateHUD();saveGame();statusEl.textContent="Fort piece repaired.";return true;}}
+  if(colony.iron<10){statusEl.textContent="Fort piece needs 10 iron.";return false;}
   const p=snapFortPoint(x,y);
+  if(lockedExpansionAt(p.x,p.y)){statusEl.textContent="Area requires Engineering Lv.5.";return false;}
+  colony.iron-=10;updateHUD();
   fortPieces.push({type:fortTool,sprite:fortTool==="wall"?"wall_straight_custom.png":null,x:p.x,y:p.y,rotation:fortRotation});
   refreshLayoutOutput();
   statusEl.textContent=fortTool+" placed.";
