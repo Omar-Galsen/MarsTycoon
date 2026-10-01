@@ -185,15 +185,6 @@ window.BASE_LAYOUT={
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 706,
-      "y": 638,
-      "nx": 0.3996,
-      "ny": 0.913,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
       "x": 756,
       "y": 112,
       "nx": 0.4397,
@@ -235,15 +226,6 @@ window.BASE_LAYOUT={
       "nx": 0.6004,
       "ny": 0.027,
       "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 956,
-      "y": 638,
-      "nx": 0.6004,
-      "ny": 0.913,
-      "rotation": 180
     },
     {
       "type": "wall",
