@@ -57,6 +57,24 @@
     <button class="image-action" id="menuBtn" title="Sprite catalog"><img src="Assets/sprites/ui_menu_button.png" alt="Menu"></button>
   </div>
   <div id="status">Loading Mars colony assets…</div>
+
+  <div id="tutorialOverlay" class="tutorial-overlay hidden" aria-hidden="true">
+    <div id="tutorialSpotlight" class="tutorial-spotlight"></div>
+    <div class="tutorial-card" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+      <div class="tutorial-kicker">MISSION CONTROL TRAINING</div>
+      <div class="tutorial-progress"><div id="tutorialProgressBar"></div></div>
+      <h2 id="tutorialTitle">Welcome to Mars</h2>
+      <p id="tutorialText"></p>
+      <div id="tutorialHint" class="tutorial-hint"></div>
+      <div class="tutorial-actions">
+        <button id="tutorialSkipBtn" class="tutorial-skip">SKIP</button>
+        <div class="tutorial-nav">
+          <button id="tutorialBackBtn">BACK</button>
+          <button id="tutorialNextBtn" class="tutorial-next">NEXT</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="catalog" class="hidden"><div class="catalog-card"><button id="closeCatalog">×</button><h2>Colony Sprite Catalog</h2><p>Every game sprite currently available in the repository.</p><div id="catalogGrid"></div></div></div>
   <script src="js/base_layout.js"></script>
   <script src="js/game.js"></script>
