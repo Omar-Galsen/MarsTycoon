@@ -228,6 +228,7 @@ const tutorialSteps=[
   {title:"The colony is under attack!",text:"Twelve monsters are approaching the south gate. Your mission is to survive the opening horde and keep the colony operating.",hint:"Combat is paused while you learn. Tap NEXT to continue, or SKIP to fight immediately.",target:null},
   {title:"Protect the south gate",text:"Monsters approach from below the colony and claw at the gate. The green bar above the gate shows its remaining health.",hint:"If the gate breaks, you lose credits and iron for emergency repairs.",target:"south-gate"},
   {title:"Your defenders fight for you",text:"Soldiers and the two gate turrets automatically target nearby monsters. Soldiers retreat to recover when their health is low.",hint:"Watch the monster wind-up: its claw deals damage during the strike.",target:"south-gate"},
+  {title:"Command the defense",text:"Use REPAIR GATE to restore 60 health for 25 iron. DEPLOY SOLDIERS adds two fighters for 100 credits and 15 iron.",hint:"Repairs recharge in 6 seconds; reinforcements in 20 seconds. Commands unlock when you resume combat.",target:"#battleActions"},
   {title:"Keep resources flowing",text:"Credits and iron pay for buildings and upgrades. Water, oxygen, and power keep your colony running.",hint:"After the wave, build miners, solar arrays, and life-support structures.",target:"#resources"},
   {title:"Build and upgrade",text:"Choose a building in the build bar, then tap a valid spot in the colony. Tap an existing building to manage or upgrade it.",hint:"Complete Colony Goals to guide your next improvements.",target:"#buildPanel"},
   {title:"Explore after the battle",text:"Finish defending the colony before leaving. Then tap OUTSIDE, tap terrain to move, and tap an enemy camp to send your convoy.",hint:"Collect resources and return before suit oxygen runs out.",target:"#zoneSwitch"},
@@ -602,6 +603,57 @@ function spawnColonyDefenders(){
     });
   }
 }
+
+const battleActions={repairCooldown:0,deployCooldown:0};
+const battlePanel=document.createElement("section");
+battlePanel.id="battleActions";
+battlePanel.setAttribute("aria-label","Colony defense commands");
+battlePanel.style.cssText="position:fixed;right:12px;bottom:125px;z-index:25;max-width:calc(100vw - 24px);padding:12px;border:1px solid #bb7c43;border-radius:12px;background:rgba(16,20,23,.95);color:#fff;box-shadow:0 4px 18px #0008;";
+battlePanel.innerHTML='<div style="font-weight:bold;margin-bottom:8px">DEFENSE COMMANDS</div><div id="battleGateLabel" style="margin-bottom:8px;font-size:13px"></div><button id="repairGateBtn" type="button">REPAIR GATE</button> <button id="deploySoldiersBtn" type="button">DEPLOY SOLDIERS</button><div style="font-size:12px;margin-top:8px">Repair +60 HP: 25 iron<br>Deploy 2 soldiers: $100 + 15 iron • Max 8</div>';
+document.body.appendChild(battlePanel);
+const repairGateBtn=document.getElementById("repairGateBtn");
+const deploySoldiersBtn=document.getElementById("deploySoldiersBtn");
+[repairGateBtn,deploySoldiersBtn].forEach(function(btn){
+  btn.style.cssText="min-height:48px;padding:8px 12px;border:1px solid #d69b54;border-radius:8px;background:#344638;color:#fff;font-weight:bold;cursor:pointer;";
+});
+function livingDefenderCount(){
+  return baseRaid.defenders.filter(function(d){return d.active&&d.hp>0}).length;
+}
+function repairGate(){
+  if(!baseRaid.active||paused||gameMode!=="base"||battleActions.repairCooldown>0)return false;
+  if(baseRaid.gateHealth>=baseRaid.gateMaxHealth||colony.iron<25)return false;
+  colony.iron-=25;
+  baseRaid.gateHealth=Math.min(baseRaid.gateMaxHealth,baseRaid.gateHealth+60);
+  battleActions.repairCooldown=6;
+  statusEl.textContent="Gate repaired +60 HP. Repair crew ready again in 6 seconds.";
+  updateHUD();saveGame();refreshBattleActions();return true;
+}
+function deploySoldiers(){
+  if(!baseRaid.active||paused||gameMode!=="base"||battleActions.deployCooldown>0)return false;
+  const living=livingDefenderCount();
+  if(living>6||colony.credits<100||colony.iron<15)return false;
+  colony.credits-=100;colony.iron-=15;
+  const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
+  for(let i=0;i<2;i++){
+    const x=b.cx+(i===0?-1:1)*u*.8,y=b.bottom-u*1.18;
+    baseRaid.defenders.push({x:x,y:y,homeX:x,homeY:y,hp:70+researchState.military*15,maxHp:70+researchState.military*15,cooldown:.15+i*.11,speed:74+researchState.military*7,state:"hold",target:null,active:true});
+  }
+  battleActions.deployCooldown=20;
+  statusEl.textContent="Two reinforcement soldiers deployed!";
+  updateHUD();saveGame();refreshBattleActions();return true;
+}
+function refreshBattleActions(){
+  battlePanel.style.display=baseRaid.active&&gameMode==="base"?"block":"none";
+  document.getElementById("battleGateLabel").textContent="Gate "+Math.ceil(baseRaid.gateHealth)+" / "+baseRaid.gateMaxHealth+" HP • Soldiers "+livingDefenderCount()+" / 8";
+  repairGateBtn.textContent=battleActions.repairCooldown>0?"REPAIR "+Math.ceil(battleActions.repairCooldown)+"s":"REPAIR GATE";
+  deploySoldiersBtn.textContent=battleActions.deployCooldown>0?"DEPLOY "+Math.ceil(battleActions.deployCooldown)+"s":"DEPLOY SOLDIERS";
+  repairGateBtn.disabled=paused||!baseRaid.active||battleActions.repairCooldown>0||colony.iron<25||baseRaid.gateHealth>=baseRaid.gateMaxHealth;
+  deploySoldiersBtn.disabled=paused||!baseRaid.active||battleActions.deployCooldown>0||colony.credits<100||colony.iron<15||livingDefenderCount()>6;
+  [repairGateBtn,deploySoldiersBtn].forEach(function(btn){btn.style.opacity=btn.disabled?".45":"1"});
+}
+repairGateBtn.onclick=repairGate;
+deploySoldiersBtn.onclick=deploySoldiers;
+
 function startBaseRaid(opening){
   if(baseRaid.active||gameMode!=="base")return;
   const b=baseGeometry();
@@ -611,6 +663,7 @@ function startBaseRaid(opening){
   baseRaid.attackCooldown=0;
   baseRaid.opening=!!opening;
   baseRaid.bannerTime=5;
+  battleActions.repairCooldown=0;battleActions.deployCooldown=0;
   spawnColonyDefenders();
 
   const count=opening?12:Math.min(16,6+campaign.sector*2);
@@ -699,6 +752,8 @@ function updateBaseRaid(dt){
   const gateX=b.cx,gateY=b.bottom-18;
   let alive=0;
 
+  battleActions.repairCooldown=Math.max(0,battleActions.repairCooldown-dt);
+  battleActions.deployCooldown=Math.max(0,battleActions.deployCooldown-dt);
   baseRaid.bannerTime=Math.max(0,(baseRaid.bannerTime||0)-dt);
   updateColonyDefenseAI(dt);
 
@@ -2008,7 +2063,7 @@ canvas.addEventListener("pointerdown",function(e){
   if(gameMode==="outside"){const camp=campAtPoint(e.clientX,e.clientY);if(camp){dispatchArmyToCamp(camp);return}expedition.targetX=e.clientX;expedition.targetY=e.clientY;return}
 },true);
 
-function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateRaidScheduler(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
+function loop(now){refreshBattleActions();const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateRaidScheduler(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();loadGame();applyResearchBonuses();resetEnemyPatrols();refreshSectorMap();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
-loadSprites().then(function(){startBaseRaid(true);startTutorial(false);requestAnimationFrame(loop)});
+loadSprites().then(function(){startBaseRaid(true);refreshBattleActions();startTutorial(false);requestAnimationFrame(loop)});
