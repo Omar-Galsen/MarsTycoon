@@ -794,7 +794,7 @@ function setMode(mode){
   if(mode==="layout"){paused=true;selectedPlaced=null;hideSelectedPanel();refreshLayoutOutput();refreshFortStatus();statusEl.textContent="Layout mode: build the fort or switch to BUILDINGS to drag structures.";}
   else if(mode==="outside"){
     selectedPlaced=null;hideSelectedPanel();
-    expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();
+    expedition.x=innerWidth*.5;expedition.y=innerHeight*.70;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.79;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();
     statusEl.textContent="Tap terrain to move. Tap an enemy camp to deploy the military convoy and engage automatically.";
   }else if(mode==="base"){
     paused=false;
@@ -1169,11 +1169,56 @@ function drawPlayerCombatHUD(){
   if(gameMode!=="outside")return;
   drawHealthBar(expedition.x,expedition.y-34,42,6,expedition.health/100,"#6ed36d");
 }
+function drawOutsideBasePreview(){
+  // Show the player's colony as a distant miniature outpost in OUTSIDE mode.
+  const b=baseGeometry();
+  const scale=Math.max(.20,Math.min(.28,innerWidth/1900*.26));
+  const targetX=innerWidth*.50;
+  const targetY=innerHeight*.88;
+
+  ctx.save();
+  ctx.globalAlpha=.96;
+
+  // Ground halo behind the base so it reads as a distant settlement.
+  ctx.fillStyle="rgba(78,54,42,.40)";
+  ctx.beginPath();
+  ctx.ellipse(targetX,targetY+8,b.w*scale*.53,b.h*scale*.31,0,0,Math.PI*2);
+  ctx.fill();
+
+  // Reuse the actual current base layout, scaled down into the outside map.
+  ctx.translate(targetX-b.cx*scale,targetY-b.cy*scale);
+  ctx.scale(scale,scale);
+  drawBaseInfrastructure();
+  drawBuildings();
+  ctx.restore();
+
+  // Label and safe-zone ring.
+  ctx.save();
+  ctx.strokeStyle="rgba(116,223,112,.75)";
+  ctx.lineWidth=2;
+  ctx.setLineDash([7,6]);
+  ctx.beginPath();
+  ctx.ellipse(targetX,targetY+8,b.w*scale*.54,b.h*scale*.32,0,0,Math.PI*2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle="rgba(9,14,12,.86)";
+  ctx.beginPath();
+  ctx.roundRect(targetX-48,targetY-b.h*scale*.35-20,96,20,7);
+  ctx.fill();
+  ctx.fillStyle="#8ee887";
+  ctx.font="bold 10px Arial";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillText("YOUR BASE",targetX,targetY-b.h*scale*.35-10);
+  ctx.restore();
+}
+
 function drawOutsideTerrain(){
   ctx.fillStyle="#7f3524";ctx.fillRect(0,0,innerWidth,innerHeight);
   const tile=images["terrain_2_3.png"]||images["terrain_1_3.png"];
   if(tile){for(let y=0;y<innerHeight;y+=GRID)for(let x=0;x<innerWidth;x+=GRID)ctx.drawImage(tile,x,y,GRID+1,GRID+1)}
   worldProps.slice(0,14).forEach(function(p,i){drawImageCentered(p.sprite,(p.x*1.3+i*37)%innerWidth,(p.y*1.1+i*23)%innerHeight,GRID*.5,GRID*.5)});
+  drawOutsideBasePreview();
   outsideEnemyCamps.forEach(drawEnemyCamp);
   drawEnemyPatrols();
   outsideNodes.forEach(function(n){if(n.active)drawImageCentered(n.sprite,n.x*innerWidth,n.y*innerHeight,GRID*1.25,GRID*1.25)});
