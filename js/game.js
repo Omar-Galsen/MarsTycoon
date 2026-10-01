@@ -35,7 +35,7 @@ function loadSprites(){
   return Promise.all(jobs);
 }
 
-const colony={credits:1500,iron:80,water:80,oxygen:110,power:80,population:3,hqLevel:1};
+const colony={credits:1500,iron:80,oil:40,water:80,oxygen:110,power:80,population:3,hqLevel:1};
 let selectedBuilding="miner",selectedPlaced=null,paused=false,speed=1,activeTab="economy",simulationAccumulator=0,lastTime=performance.now();
 let gameMode="base";
 let layoutDragIndex=null,layoutDragOffsetX=0,layoutDragOffsetY=0;
@@ -182,7 +182,7 @@ function loadGame(){
     const raw=localStorage.getItem(GAME_SAVE_KEY);
     if(!raw)return false;
     const data=JSON.parse(raw);
-    if(data.colony)Object.assign(colony,data.colony);
+    if(data.colony)Object.assign(colony,data.colony);if(typeof colony.oil!=="number")colony.oil=40;
     if(data.campaign)Object.assign(campaign,data.campaign);
     if(data.research)Object.assign(researchState,data.research);
     if(Array.isArray(data.camps)){
@@ -349,6 +349,7 @@ refinery:{name:"Refinery",cost:460,sprite:"refinery.png",baseSprite:"industrial_
 roverGarage:{name:"Rover Garage",cost:420,sprite:"rover_garage.png",baseSprite:"rover_garage.png",size:1.35,category:"utility",unlock:2,baseProd:"Expedition support",basePower:-2,capacity:2,score:165},
 habitat:{name:"Habitat",cost:300,sprite:"habitat.png",baseSprite:"habitat_dome_large.png",size:1.25,category:"life",unlock:1,baseProd:"Population +2",basePower:-1,capacity:4,score:120},
 miner:{name:"Iron Miner",cost:200,sprite:"miner.png",size:1.05,category:"economy",unlock:1,baseProd:"Iron +2/s",basePower:-1,capacity:30,score:90},
+oilRig:{name:"Oil Extractor",cost:360,sprite:"refinery.png",baseSprite:"industrial_refinery.png",size:1.15,category:"economy",unlock:1,baseProd:"Oil +1.5/s",basePower:-3,capacity:55,score:135},
 solar:{name:"Solar Array",cost:150,sprite:"solar_panel.png",baseSprite:"solar_power_station.png",size:1.1,category:"economy",unlock:1,baseProd:"Power +4/s",basePower:4,capacity:20,score:70},
 oxygen:{name:"Oxygen Plant",cost:250,sprite:"oxygen_plant.png",baseSprite:"life_support_complex.png",size:1.08,category:"life",unlock:1,baseProd:"O2 +3/s",basePower:-2,capacity:30,score:100},
 water:{name:"Water Extractor",cost:250,sprite:"water_extractor.png",baseSprite:"water_processing_complex.png",size:1.05,category:"life",unlock:1,baseProd:"Water +2/s",basePower:-2,capacity:30,score:100},
@@ -1109,6 +1110,7 @@ function colonyIncomePerSecond(){
       case "satellite": case "radio": income+=.40*m; break;
       case "researchLab": income+=.55*m; break;
       case "refinery": income+=1.25*m; break;
+      case "oilRig": income+=.85*m; break;
     }
   });
   return income;
@@ -1125,6 +1127,9 @@ function productionTick(){
     switch(b.type){
       case "miner":
         if(colony.power>=m){colony.iron+=2*m;colony.power-=m}
+        break;
+      case "oilRig":
+        if(colony.power>=3*m){colony.oil+=1.5*m;colony.power-=3*m}
         break;
       case "solar":
         colony.power+=4*m;
@@ -1163,9 +1168,9 @@ function productionTick(){
   if(selectedPlaced!=null)showSelectedPanel();
   updateMissions();
 }
-function updateHUD(){document.getElementById("credits").textContent=Math.floor(colony.credits);document.getElementById("credits").title="Income: +$"+colonyIncomePerSecond().toFixed(1)+"/s";document.getElementById("iron").textContent=Math.floor(colony.iron);document.getElementById("water").textContent=Math.floor(colony.water);document.getElementById("oxygen").textContent=Math.floor(colony.oxygen);document.getElementById("power").textContent=Math.floor(colony.power);document.getElementById("population").textContent=colony.population;document.getElementById("hqLabel").textContent="Command Hub Lv."+colony.hqLevel;document.getElementById("colonyPowerScore").textContent=colonyScore().toLocaleString()}
+function updateHUD(){document.getElementById("credits").textContent=Math.floor(colony.credits);document.getElementById("credits").title="Income: +$"+colonyIncomePerSecond().toFixed(1)+"/s";document.getElementById("iron").textContent=Math.floor(colony.iron);document.getElementById("oil").textContent=Math.floor(colony.oil);document.getElementById("water").textContent=Math.floor(colony.water);document.getElementById("oxygen").textContent=Math.floor(colony.oxygen);document.getElementById("power").textContent=Math.floor(colony.power);document.getElementById("population").textContent=colony.population;document.getElementById("hqLabel").textContent="Command Hub Lv."+colony.hqLevel;document.getElementById("colonyPowerScore").textContent=colonyScore().toLocaleString()}
 
-const missions=[{label:"Build 5 structures",value:function(){return buildings.length},target:5},{label:"Upgrade a building to Lv.3",value:function(){return Math.max.apply(null,buildings.map(function(b){return b.level}))},target:3},{label:"Reach 150 iron",value:function(){return Math.floor(colony.iron)},target:150},{label:"Clear an enemy camp",value:function(){return campaign.campsCleared},target:1},{label:"Defend the colony",value:function(){return campaign.raidsWon},target:1},{label:"Command Hub Lv.2",value:function(){return colony.hqLevel},target:2}];
+const missions=[{label:"Build 5 structures",value:function(){return buildings.length},target:5},{label:"Upgrade a building to Lv.3",value:function(){return Math.max.apply(null,buildings.map(function(b){return b.level}))},target:3},{label:"Reach 150 iron",value:function(){return Math.floor(colony.iron)},target:150},{label:"Reach 100 oil",value:function(){return Math.floor(colony.oil)},target:100},{label:"Clear an enemy camp",value:function(){return campaign.campsCleared},target:1},{label:"Defend the colony",value:function(){return campaign.raidsWon},target:1},{label:"Command Hub Lv.2",value:function(){return colony.hqLevel},target:2}];
 function updateMissions(){const list=document.getElementById("missionList");list.innerHTML="";missions.forEach(function(m){const v=Math.min(m.value(),m.target),done=v>=m.target,el=document.createElement("div");el.className="mission"+(done?" done":"");el.innerHTML='<div class="mission-line"><span>'+(done?"✓ ":"")+m.label+"</span><b>"+v+"/"+m.target+'</b></div><div class="mission-progress"><div style="width:'+(v/m.target*100)+'%"></div></div>';list.appendChild(el)})}
 
 document.getElementById("sellBtn").onclick=function(){if(colony.iron>=10){colony.iron-=10;colony.credits+=40;statusEl.textContent="Sold 10 iron for $40.";updateHUD()}else statusEl.textContent="You need at least 10 iron."};
