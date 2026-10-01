@@ -1026,12 +1026,14 @@ function drawArmyConvoy(){
   expeditionArmy.soldiers.forEach(function(s){
     if(s.health<=0)return;
     const p=transform(s.ox,s.oy);
-    const fighting=!!expeditionArmy.targetCamp;
-    if(fighting&&images["mars_soldier.png"]){
-      // New armored Mars infantry artwork.
-      // Slight overlap is intentional so the squad reads as a formation.
-      drawImageCentered("mars_soldier.png",p.x,p.y-9,GRID*.44,GRID*.44);
-      drawHealthBar(p.x,p.y-34,30,4,s.health/s.maxHealth,"#79d173");
+
+    // Always use the armored Mars soldier PNG when available,
+    // including while the convoy is idle after combat.
+    if(images["mars_soldier.png"]){
+      const idle=!expeditionArmy.targetCamp&&expeditionArmy.moveSpeed<4;
+      const size=idle?GRID*.50:GRID*.44;
+      drawImageCentered("mars_soldier.png",p.x,p.y-(idle?12:9),size,size);
+      drawHealthBar(p.x,p.y-(idle?39:34),30,4,s.health/s.maxHealth,"#79d173");
     }else{
       ctx.save();
       ctx.translate(p.x,p.y);
