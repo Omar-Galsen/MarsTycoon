@@ -219,54 +219,19 @@ const enemyPatrolVehicles=[];
 // ------------------------------------------------------------
 // FIRST-RUN TUTORIAL
 // ------------------------------------------------------------
-const TUTORIAL_STORAGE_KEY="marsTycoonTutorialCompleteV1";
+const TUTORIAL_STORAGE_KEY="marsTycoonHordeTutorialCompleteV2";
 let tutorialIndex=0;
 let tutorialWasPaused=false;
 let tutorialResizeHandler=null;
 
 const tutorialSteps=[
-  {
-    title:"Welcome to Mars",
-    text:"You are in charge of a growing Mars colony. Keep resources stable, expand the base, and prepare expeditions beyond the perimeter.",
-    hint:"This training only appears on the first run. You can skip it at any time.",
-    target:".commander-card"
-  },
-  {
-    title:"Watch your resources",
-    text:"Credits pay for construction. Iron is a core building material. Water, oxygen, and power keep the colony operating, while population shows how many colonists you support.",
-    hint:"If life-support resources fall too low, expansion becomes harder.",
-    target:"#resources"
-  },
-  {
-    title:"Build the colony",
-    text:"Use the build bar to choose structures. Economy buildings improve production, life-support buildings keep colonists supplied, and utility buildings unlock support functions.",
-    hint:"Select a building card, then place it inside the colony.",
-    target:"#buildPanel"
-  },
-  {
-    title:"Follow colony goals",
-    text:"Colony Goals give you short objectives such as constructing buildings, upgrading structures, and increasing your resources.",
-    hint:"Completing these goals is a good way to learn the early game.",
-    target:"#missionPanel"
-  },
-  {
-    title:"Upgrade structures",
-    text:"Tap an existing building to open its management panel. Upgrades increase production, capacity, and Colony Power.",
-    hint:"The Command Hub also controls progression and unlocks higher-tier structures.",
-    target:".commander-card"
-  },
-  {
-    title:"Explore outside",
-    text:"Use the OUTSIDE button when you are ready to leave the base. Move across the terrain, collect ore and other resources, then return before your suit oxygen runs out.",
-    hint:"Your expedition cargo is deposited when you return to the colony.",
-    target:"#zoneSwitch"
-  },
-  {
-    title:"Training complete",
-    text:"Your colony is ready. Start by managing resources and expanding carefully, then use expeditions to bring valuable material back to the base.",
-    hint:"Good luck, Commander.",
-    target:null
-  }
+  {title:"The colony is under attack!",text:"Twelve monsters are approaching the south gate. Your mission is to survive the opening horde and keep the colony operating.",hint:"Combat is paused while you learn. Tap NEXT to continue, or SKIP to fight immediately.",target:null},
+  {title:"Protect the south gate",text:"Monsters approach from below the colony and claw at the gate. The green bar above the gate shows its remaining health.",hint:"If the gate breaks, you lose credits and iron for emergency repairs.",target:"south-gate"},
+  {title:"Your defenders fight for you",text:"Soldiers and the two gate turrets automatically target nearby monsters. Soldiers retreat to recover when their health is low.",hint:"Watch the monster wind-up: its claw deals damage during the strike.",target:"south-gate"},
+  {title:"Keep resources flowing",text:"Credits and iron pay for buildings and upgrades. Water, oxygen, and power keep your colony running.",hint:"After the wave, build miners, solar arrays, and life-support structures.",target:"#resources"},
+  {title:"Build and upgrade",text:"Choose a building in the build bar, then tap a valid spot in the colony. Tap an existing building to manage or upgrade it.",hint:"Complete Colony Goals to guide your next improvements.",target:"#buildPanel"},
+  {title:"Explore after the battle",text:"Finish defending the colony before leaving. Then tap OUTSIDE, tap terrain to move, and tap an enemy camp to send your convoy.",hint:"Collect resources and return before suit oxygen runs out.",target:"#zoneSwitch"},
+  {title:"Ready to defend Mars?",text:"The horde is waiting. Your defenders will open fire automatically when the monsters come into range.",hint:"Tap DEFEND BASE to resume. Use HELP anytime to replay this guide.",target:"south-gate"}
 ];
 
 function tutorialEls(){
@@ -292,6 +257,12 @@ function saveTutorialCompleted(){
 function positionTutorialSpotlight(){
   const e=tutorialEls(),step=tutorialSteps[tutorialIndex];
   if(!e.spot||!step||!step.target){if(e.spot)e.spot.style.opacity="0";return}
+  if(step.target==="south-gate"){
+    const b=baseGeometry(),w=Math.min(b.w*.65,innerWidth-16),h=Math.min(160,innerHeight-16);
+    e.spot.style.left=Math.max(8,b.cx-w/2)+"px";
+    e.spot.style.top=Math.max(8,Math.min(innerHeight-h-8,b.bottom-120))+"px";
+    e.spot.style.width=w+"px";e.spot.style.height=h+"px";e.spot.style.opacity="1";return;
+  }
   const target=document.querySelector(step.target);
   if(!target){e.spot.style.opacity="0";return}
   const r=target.getBoundingClientRect(),pad=7;
@@ -309,7 +280,7 @@ function renderTutorial(){
   e.hint.textContent=step.hint||"";
   e.progress.style.width=((tutorialIndex+1)/tutorialSteps.length*100)+"%";
   e.back.disabled=tutorialIndex===0;
-  e.next.textContent=tutorialIndex===tutorialSteps.length-1?"START COLONY":"NEXT";
+  e.next.textContent=tutorialIndex===tutorialSteps.length-1?(baseRaid.active?"DEFEND BASE":"RESUME GAME"):"NEXT";
   requestAnimationFrame(positionTutorialSpotlight);
 }
 function startTutorial(force){
@@ -336,7 +307,7 @@ function finishTutorial(){
   if(tutorialResizeHandler)window.removeEventListener("resize",tutorialResizeHandler);
   tutorialResizeHandler=null;
   paused=tutorialWasPaused;
-  statusEl.textContent="Training complete. Build and expand your Mars colony.";
+  statusEl.textContent=baseRaid.active?"MONSTER HORDE! Defend the south gate!":"Training complete. Build and expand your Mars colony.";
 }
 function skipTutorial(){finishTutorial()}
 function nextTutorial(){
@@ -353,6 +324,11 @@ function previousTutorial(){
 document.getElementById("tutorialNextBtn")?.addEventListener("click",nextTutorial);
 document.getElementById("tutorialBackBtn")?.addEventListener("click",previousTutorial);
 document.getElementById("tutorialSkipBtn")?.addEventListener("click",skipTutorial);
+const tutorialHelpBtn=document.createElement("button");
+tutorialHelpBtn.id="tutorialHelpBtn";tutorialHelpBtn.className="zone-btn";tutorialHelpBtn.textContent="HELP";
+tutorialHelpBtn.setAttribute("aria-label","Replay the game tutorial");
+tutorialHelpBtn.onclick=function(){startTutorial(true)};
+document.getElementById("zoneSwitch").appendChild(tutorialHelpBtn);
 
 
 const buildingData={
@@ -2035,4 +2011,4 @@ canvas.addEventListener("pointerdown",function(e){
 function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateRaidScheduler(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();loadGame();applyResearchBonuses();resetEnemyPatrols();refreshSectorMap();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
-loadSprites().then(function(){startBaseRaid(true);requestAnimationFrame(loop)});
+loadSprites().then(function(){startBaseRaid(true);startTutorial(false);requestAnimationFrame(loop)});
