@@ -626,27 +626,31 @@ function spawnColonyDefenders(){
     });
   }
 }
-function startBaseRaid(){
+function startBaseRaid(opening){
   if(baseRaid.active||gameMode!=="base")return;
   const b=baseGeometry();
   baseRaid.active=true;
   baseRaid.gateHealth=baseRaid.gateMaxHealth;
   baseRaid.enemies=[];
+  baseRaid.attackCooldown=0;
+  baseRaid.opening=!!opening;
+  baseRaid.bannerTime=5;
   spawnColonyDefenders();
 
-  const count=Math.min(9,3+campaign.sector*2);
+  const count=opening?12:Math.min(16,6+campaign.sector*2);
   for(let i=0;i<count;i++){
     baseRaid.enemies.push({
-      x:b.cx+(i-(count-1)/2)*58,
-      y:b.bottom+100+i*16,
-      hp:55+campaign.sector*12,
-      maxHp:55+campaign.sector*12,
-      speed:32+campaign.sector*3,
+      x:b.cx+(i%6-2.5)*Math.min(64,b.w/8),
+      y:b.bottom+50+Math.floor(i/6)*65,
+      hp:opening?90:65+campaign.sector*12,
+      maxHp:opening?90:65+campaign.sector*12,
+      speed:opening?42:36+campaign.sector*3,
+      attackElapsed:null,
       cooldown:.5+i*.12,
       active:true
     });
   }
-  statusEl.textContent="DEFENSE AI ACTIVE: Raider force approaching the south gate!";
+  statusEl.textContent=opening?"MONSTER HORDE! Defend the colony!":"Monster horde approaching the south gate!";
 }
 function nearestRaidEnemy(x,y){
   let best=null,bestD=Infinity;
@@ -719,6 +723,7 @@ function updateBaseRaid(dt){
   const gateX=b.cx,gateY=b.bottom-18;
   let alive=0;
 
+  baseRaid.bannerTime=Math.max(0,(baseRaid.bannerTime||0)-dt);
   updateColonyDefenseAI(dt);
 
   baseRaid.enemies.forEach(function(e){
@@ -732,25 +737,31 @@ function updateBaseRaid(dt){
     const ty=targetDefender?targetDefender.y:gateY;
     const dx=tx-e.x,dy=ty-e.y,dist=Math.hypot(dx,dy);
 
-    if(dist>(targetDefender?105:82)){
+    e.facingX=tx;
+    if(e.attackElapsed!=null){
+      const previous=e.attackElapsed;
+      e.attackElapsed+=dt;
+      // The claw hits on frame 5, after the wind-up.
+      if(previous<.44&&e.attackElapsed>=.44){
+        if(e.attackVictim){
+          const victim=e.attackVictim;
+          if(victim.active&&victim.hp>0&&Math.hypot(victim.x-e.x,victim.y-e.y)<115){
+            victim.hp=Math.max(0,victim.hp-10);
+            if(victim.hp<=0)victim.active=false;
+            spawnExplosion(victim.x,victim.y,10);
+          }
+        }else if(Math.hypot(gateX-e.x,gateY-e.y)<90){
+          baseRaid.gateHealth=Math.max(0,baseRaid.gateHealth-8);
+          spawnExplosion(gateX,gateY,12);
+        }
+      }
+      if(e.attackElapsed>=.88){e.attackElapsed=null;e.attackVictim=null;e.cooldown=.65;}
+    }else if(dist>(targetDefender?75:55)){
       e.x+=dx/dist*e.speed*dt;
       e.y+=dy/dist*e.speed*dt;
     }else{
       e.cooldown-=dt;
-      if(e.cooldown<=0){
-        if(targetDefender){
-          targetDefender.hp=Math.max(0,targetDefender.hp-(8+campaign.sector*2));
-          spawnTracer(e.x,e.y,targetDefender.x,targetDefender.y,true);
-          if(targetDefender.hp<=0){
-            targetDefender.active=false;
-            spawnExplosion(targetDefender.x,targetDefender.y,16);
-          }
-        }else{
-          baseRaid.gateHealth=Math.max(0,baseRaid.gateHealth-(7+campaign.sector));
-          spawnTracer(e.x,e.y,gateX,gateY,true);
-        }
-        e.cooldown=1.05;
-      }
+      if(e.cooldown<=0){e.attackElapsed=0;e.attackVictim=targetDefender;}
     }
   });
 
@@ -839,10 +850,19 @@ function drawBaseRaid(){
   const b=baseGeometry(),gateX=b.cx,gateY=b.bottom-18;
   baseRaid.enemies.forEach(function(e){
     if(!e.active||e.hp<=0)return;
-    const a=Math.atan2(gateY-e.y,gateX-e.x);
-    drawRotated("rover.png",e.x,e.y,GRID*.75,GRID*.55,a);
+    const frame=e.attackElapsed==null?null:1+Math.min(7,Math.floor(e.attackElapsed/.11));
+    const attackFile=frame?"Enemy/Attack/wild_monster_attack_"+String(frame).padStart(2,"0")+".png":null;
+    const file=attackFile&&images[attackFile]?attackFile:"Enemy/wild_monster.png";
+    const bob=e.attackElapsed==null?Math.sin(combatAnimationTime*9+e.x)*2:0;
+    drawFacingImageCentered(file,e.x,e.y-10+bob,GRID*.85,GRID*.78,e.facingX??gateX);
     drawHealthBar(e.x,e.y-27,42,5,e.hp/e.maxHp,"#d85b4b");
   });
+  if(baseRaid.bannerTime>0){
+    ctx.save();ctx.fillStyle="rgba(30,5,5,.90)";ctx.fillRect(innerWidth/2-150,100,300,48);
+    ctx.fillStyle="#ffd174";ctx.font="bold 18px Arial";ctx.textAlign="center";
+    ctx.fillText("MONSTER HORDE INCOMING",innerWidth/2,122);
+    ctx.font="12px Arial";ctx.fillText("Defend the south gate!",innerWidth/2,140);ctx.restore();
+  }
   drawColonyDefenders();
   drawDefenseTurrets();
   drawHealthBar(gateX,gateY-34,110,7,baseRaid.gateHealth/baseRaid.gateMaxHealth,"#79d173");
@@ -1390,6 +1410,7 @@ document.querySelectorAll(".sector-btn").forEach(function(btn){
 });
 
 function setMode(mode){
+  if(baseRaid.active&&mode!=="base"){statusEl.textContent="Defend the colony before leaving the base.";return;}
   gameMode=mode;
   document.body.classList.toggle("outside-mode",mode==="outside");
   document.body.classList.toggle("layout-mode",mode==="layout");
@@ -2014,4 +2035,4 @@ canvas.addEventListener("pointerdown",function(e){
 function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateRaidScheduler(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();loadGame();applyResearchBonuses();resetEnemyPatrols();refreshSectorMap();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
-loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop);setTimeout(function(){startTutorial(false)},250)});
+loadSprites().then(function(){startBaseRaid(true);requestAnimationFrame(loop)});
