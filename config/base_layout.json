@@ -203,29 +203,11 @@
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 756,
-      "y": 638,
-      "nx": 0.4397,
-      "ny": 0.913,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
       "x": 806,
       "y": 112,
       "nx": 0.4799,
       "ny": 0.027,
       "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 806,
-      "y": 638,
-      "nx": 0.4799,
-      "ny": 0.913,
-      "rotation": 180
     },
     {
       "type": "wall",
@@ -239,29 +221,11 @@
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 856,
-      "y": 638,
-      "nx": 0.5201,
-      "ny": 0.913,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
       "x": 906,
       "y": 112,
       "nx": 0.5603,
       "ny": 0.027,
       "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 906,
-      "y": 638,
-      "nx": 0.5603,
-      "ny": 0.913,
-      "rotation": 180
     },
     {
       "type": "wall",
@@ -622,6 +586,15 @@
       "nx": 0.987,
       "ny": 0.833,
       "rotation": 90
+    },
+    {
+      "type": "gate",
+      "sprite": "gate.png",
+      "x": 831,
+      "y": 638,
+      "nx": 0.5,
+      "ny": 0.913,
+      "rotation": 0
     }
   ],
   "buildings": [
