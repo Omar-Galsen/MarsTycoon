@@ -436,7 +436,7 @@ function drawBaseInfrastructure(){
   if(plaza&&images[plaza]) drawImageCentered(plaza,b.cx,b.cy,u*3.25,u*2.45);
 
   // coherent perimeter (automatic only until the player creates a custom fort)
-  if(fortPieces.length===0){
+  if(fortPieces.length===0&&!images["mars_base_background.png"]){
   const wall=baseArt("wall_straight.png","wall_2.png");
   const wc=baseArt("wall_corner.png","wall_4.png");
   const tower=baseArt("wall_tower.png",null);
@@ -466,16 +466,7 @@ function drawBaseInfrastructure(){
   }
   if(fortPieces.length>0)drawCustomFort();
 
-  // south gate threshold
-  if(gameMode==="base"){
-    ctx.save();
-    ctx.fillStyle="rgba(54,58,58,.72)";
-    ctx.fillRect(b.cx-u*.52,b.bottom-u*.34,u*1.04,u*.40);
-    ctx.strokeStyle="rgba(240,197,94,.55)";
-    ctx.lineWidth=2;
-    ctx.strokeRect(b.cx-u*.52,b.bottom-u*.34,u*1.04,u*.40);
-    ctx.restore();
-  }
+  // The fortified background already contains its own south gate and threshold.
 
   // build pads snap directly beside roads
   getBuildPlots().forEach(function(p){
