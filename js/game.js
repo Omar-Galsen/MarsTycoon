@@ -216,6 +216,7 @@ function saveGame(){
       buildings:buildings,fortPieces:fortPieces,
       expedition:expedition,army:army,armyCampIndex:outsideEnemyCamps.indexOf(expeditionArmy.targetCamp),
       raid:raid,battleActions:battleActions,mode:gameMode==="outside"?"outside":"base",
+      conquest:conquestState,
       expeditionMissions:expeditionMissionState,
       nodes:outsideNodes,explorationSites:explorationSites,exploredCells:Array.from(exploredCells),
       camps:outsideEnemyCamps.map(function(c){return {active:c.active,health:c.health,maxHealth:c.maxHealth,units:c.units};})
@@ -249,6 +250,7 @@ function loadGame(){
       if(Array.isArray(data.explorationSites))data.explorationSites.forEach(function(saved){const site=explorationSites.find(function(p){return p.id===saved.id});if(site){site.claimed=!!saved.claimed;site.discovered=!!saved.discovered;}});
       if(Array.isArray(data.exploredCells))data.exploredCells.forEach(function(key){if(/^([0-9]|[12][0-9]|3[01]),([0-9]|1[0-9]|2[0-3])$/.test(key))exploredCells.add(key)});
       if(data.expeditionMissions){expeditionMissionState.completed=Array.isArray(data.expeditionMissions.completed)?data.expeditionMissions.completed.filter(function(id){return ["cache","outpost","ruin"].includes(id)}):[];expeditionMissionState.checkpoint=data.expeditionMissions.checkpoint==="outpost"?"outpost":"base";}
+      if(data.conquest){conquestState.claimed=Array.isArray(data.conquest.claimed)?Array.from(new Set(data.conquest.claimed.filter(function(id){return ["basin","canyon","research","nest"].includes(id)}))):[];conquestState.victory=!!data.conquest.victory;}
       restoredMode=baseRaid.active?"base":(data.mode==="outside"?"outside":"base");
       restoredSession=true;
     }
@@ -1324,6 +1326,7 @@ function productionTick(){
   if(paused)return;
 
   if(explorationSites.some(function(site){return site.id==="outpost"&&site.claimed}))colony.iron+=1;
+  colony.credits+=conquestState.claimed.length*2;
   // Passive colony economy.
   colony.credits+=colonyIncomePerSecond();
 
@@ -1551,28 +1554,7 @@ function refreshSectorMap(){
   const faction=currentFaction();
   if(el)el.textContent="Sector "+campaign.selectedSector+" • "+sectorName(campaign.selectedSector)+" • "+faction.name;
 }
-function selectSector(n){
-  if(n>campaign.sector||n<1||n>3)return;
-  campaign.selectedSector=n;
-  const faction=currentFaction();
-  outsideEnemyCamps.forEach(function(c,i){
-    const scale=1+(n-1)*.34;
-    c.name=faction.camps[i]||("Faction Camp "+(i+1));
-    c.faction=faction.name;
-    c.maxHealth=Math.round([120,150,110][i]*scale);
-    c.health=c.maxHealth;
-    c.active=true;
-    c.units.forEach(function(u,j){
-      const base=[40,45,35][Math.min(i,2)]||40;
-      const eliteBoost=(n===3&&j===c.units.length-1)?1.35:1;
-      u.maxHp=Math.round(Math.max(base,u.maxHp)*scale*eliteBoost);
-      u.hp=u.maxHp;u.cooldown=0;
-    });
-  });
-  resetEnemyPatrols();
-  refreshSectorMap();saveGame();
-  statusEl.textContent="Entered "+sectorName(n)+" • "+faction.name+" controls this region.";
-}
+function selectSector(n){statusEl.textContent="Use CONQUEST to track and capture regions.";}
 document.querySelectorAll(".sector-btn").forEach(function(btn){
   btn.onclick=function(){selectSector(+btn.dataset.sector)};
 });
@@ -1672,6 +1654,75 @@ function refreshExpeditionMissionPanel(){
  document.getElementById("checkpointToggleBtn").disabled=!captured||paused;
  document.getElementById("checkpointToggleBtn").textContent="START: "+expeditionMissionState.checkpoint.toUpperCase();
  document.getElementById("checkpointText").textContent=captured?"Outpost captured: approach within 85m to refill oxygen.":"Capture the outpost to unlock oxygen refill and a new starting point.";
+}
+
+const conquestState={claimed:[],victory:false};
+const conquestRegions=[
+ {id:"basin",name:"Landing Basin",objective:"Survive one colony defense.",credits:150,iron:20,camp:null,site:null},
+ {id:"canyon",name:"Rust Canyon",objective:"Capture the mining outpost and clear its monster camp.",credits:300,iron:40,camp:0,site:"outpost"},
+ {id:"research",name:"Lost Research Zone",objective:"Salvage the research ruin and clear its monster camp.",credits:450,iron:60,camp:1,site:"ruin"},
+ {id:"nest",name:"Alien Nest",objective:"Clear the final monster camp after securing the other regions.",credits:700,iron:100,camp:2,site:null}
+];
+function conquestObjectiveMet(region){
+ if(region.id==="basin")return campaign.raidsWon>=1;
+ const camp=outsideEnemyCamps[region.camp];
+ const site=region.site?explorationSites.find(function(p){return p.id===region.site}):null;
+ return !!camp&&!camp.active&&(!region.site||(site&&site.claimed));
+}
+function conquestRegionStatus(region,index){
+ if(conquestState.claimed.includes(region.id))return "CONTROLLED";
+ const prerequisite=index===0||conquestState.claimed.includes(conquestRegions[index-1].id);
+ if(!prerequisite)return "HOSTILE";
+ const site=region.site&&explorationSites.find(function(p){return p.id===region.site});
+ const camp=region.camp==null?null:outsideEnemyCamps[region.camp];
+ return (site&&site.discovered)||(camp&&(!camp.active||camp.health<camp.maxHealth))||region.id==="basin"?"CONTESTED":"HOSTILE";
+}
+function updateConquestProgress(){
+ let changed=false;
+ conquestRegions.forEach(function(region,i){
+   if(conquestState.claimed.includes(region.id))return;
+   if(i>0&&!conquestState.claimed.includes(conquestRegions[i-1].id))return;
+   if(!conquestObjectiveMet(region))return;
+   conquestState.claimed.push(region.id);colony.credits+=region.credits;colony.iron+=region.iron;changed=true;
+   statusEl.textContent=region.name+" secured! +$"+region.credits+" and +"+region.iron+" iron.";
+ });
+ if(conquestState.claimed.length===4&&!conquestState.victory){
+   conquestState.victory=true;changed=true;statusEl.textContent="Mars conquered! All four regions are under colony control.";
+ }
+ if(changed){updateHUD();saveGame();}
+}
+const conquestPanel=document.createElement("section");
+conquestPanel.style.cssText="display:none;position:fixed;left:12px;top:145px;width:320px;max-width:calc(100vw - 24px);max-height:65vh;overflow:auto;z-index:32;background:#152329f5;color:#e5eeee;border:1px solid #719492;border-radius:12px;padding:12px;box-sizing:border-box;font:13px Arial;";
+document.body.appendChild(conquestPanel);
+const conquestBtn=document.createElement("button");conquestBtn.className="zone-btn";conquestBtn.textContent="CONQUEST";
+conquestBtn.onclick=function(){conquestPanel.style.display=conquestPanel.style.display==="none"?"block":"none";refreshConquestMap()};
+document.getElementById("zoneSwitch").appendChild(conquestBtn);
+let conquestRenderKey="";
+function refreshConquestMap(){
+ const statuses=conquestRegions.map(conquestRegionStatus);
+ const key=JSON.stringify([statuses,conquestState.victory,campaign.raidsWon,explorationSites.map(function(p){return p.claimed}),outsideEnemyCamps.map(function(c){return c.active})]);
+ if(key===conquestRenderKey)return;conquestRenderKey=key;
+ conquestPanel.innerHTML='<strong>MARS CONQUEST • '+conquestState.claimed.length+'/4</strong><p>Secure regions in order. Each controlled region adds $2/s to colony income.</p>';
+ conquestRegions.forEach(function(region,i){
+   const card=document.createElement("div"),color=statuses[i]==="CONTROLLED"?"#8be897":statuses[i]==="CONTESTED"?"#ffd174":"#ff9185";
+   card.style.cssText="border-top:1px solid #54716b;padding:10px 0";
+   const locked=i>0&&!conquestState.claimed.includes(conquestRegions[i-1].id);
+
+   card.innerHTML="<strong>"+region.name+"</strong><div style='color:"+color+"'>"+statuses[i]+"</div><p>"+region.objective+"</p><div>Reward: "+region.credits+" credits + "+region.iron+" iron</div>"+(locked?"<p>First secure "+conquestRegions[i-1].name+".</p>":"");
+   if(region.camp!=null&&!locked&&statuses[i]!=="CONTROLLED"){
+     const button=document.createElement("button");button.textContent="TRACK REGION";button.style.minHeight="44px";
+     button.onclick=function(){
+       if(paused||baseRaid.active){statusEl.textContent="Finish the defense or resume first.";return;}
+       if(gameMode!=="outside")setMode("outside");if(gameMode!=="outside")return;
+       const camp=outsideEnemyCamps[region.camp];
+       if(camp.active){dispatchArmyToCamp(camp);outsideCamera.follow="convoy";}
+       else if(region.site)navigateExpeditionSite(region.site);
+       conquestPanel.style.display="none";
+     };card.appendChild(button);
+   }
+   conquestPanel.appendChild(card);
+ });
+ if(conquestState.victory){const text=document.createElement("p");text.textContent="VICTORY: All four regions secured!";conquestPanel.appendChild(text);}
 }
 
 const exploredCells=new Set();
@@ -1947,28 +1998,7 @@ function campThreatLabel(camp){
   const strength=liveCampUnits(camp).length+livePatrolsForCamp(camp).length*2+Math.ceil(camp.health/80);
   return strength>=7?"HIGH":(strength>=4?"MEDIUM":"LOW");
 }
-function advanceSectorIfCleared(){
-  if(outsideEnemyCamps.some(function(c){return c.active}))return;
-  campaign.sector=Math.min(3,campaign.sector+1);
-  campaign.selectedSector=campaign.sector;
-  const faction=currentFaction();
-  campaign.nextRaid=Math.max(28,55-campaign.sector*4);
-  outsideEnemyCamps.forEach(function(c,i){
-    c.name=faction.camps[i]||c.name;
-    c.faction=faction.name;
-    c.maxHealth=Math.round(c.maxHealth*(1.18+campaign.sector*.03));
-    c.health=c.maxHealth;
-    c.active=true;
-    c.units.forEach(function(u){
-      u.maxHp=Math.round(u.maxHp*(1.10+campaign.sector*.025));
-      u.hp=u.maxHp;u.cooldown=0;
-    });
-  });
-  resetEnemyPatrols();
-  refreshSectorMap();
-  statusEl.textContent="Sector "+campaign.sector+" unlocked • "+currentFaction().name+" now controls the battlefield.";
-  saveGame();
-}
+function advanceSectorIfCleared(){updateConquestProgress();refreshConquestMap();saveGame();}
 function campAtPoint(x,y){
   let best=null,bestD=Infinity;
   outsideEnemyCamps.forEach(function(c){
@@ -2386,9 +2416,10 @@ canvas.addEventListener("pointerdown",function(e){
   if(gameMode==="outside"){if(paused)return;const p=outsidePoint(e.clientX,e.clientY),camp=campAtPoint(p.x,p.y);if(camp){dispatchArmyToCamp(camp);outsideCamera.follow="convoy";return}outsideCamera.follow="scout";expedition.targetX=p.x;expedition.targetY=p.y;return}
 },true);
 
-function loop(now){mapControls.style.display=gameMode==="outside"?"block":"none";refreshBattleActions();refreshCycleHUD();const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(!paused)updateRaidScheduler(dt*speed);if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
+function loop(now){if(!paused)updateConquestProgress();refreshConquestMap();mapControls.style.display=gameMode==="outside"?"block":"none";refreshBattleActions();refreshCycleHUD();const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(!paused)updateRaidScheduler(dt*speed);if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();loadGame();applyResearchBonuses();resetEnemyPatrols();refreshSectorMap();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
+document.querySelectorAll(".sector-btn").forEach(function(btn){btn.style.display="none"});
 loadSprites().then(function(){
   if(!restoredSession)startBaseRaid(true);
   else{
