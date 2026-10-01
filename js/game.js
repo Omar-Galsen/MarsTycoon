@@ -31,6 +31,7 @@ const images={};let loadedCount=0;
 function loadOne(key,url){return new Promise(function(resolve){const img=new Image();img.onload=function(){images[key]=img;loadedCount++;statusEl.textContent="Loading colony art…";resolve()};img.onerror=function(){resolve()};img.src=url})}
 function loadSprites(){
   const jobs=spriteFiles.map(function(file){return loadOne(file,ASSET+file)});
+  ["research_ruin.png","mining_outpost.png","supply_cache.png"].forEach(function(file){jobs.push(loadOne("Exploration/"+file,ASSET+"Exploration/"+file))});
   enemyFiles.forEach(function(file){jobs.push(loadOne("Enemy/"+file,ENEMY_ASSET+file))});
   baseBuilderFiles.forEach(function(file){jobs.push(loadOne("BB/"+file,BASE_ASSET+file))});
   Object.keys(puzzleFiles).forEach(function(key){jobs.push(loadOne(key,puzzleFiles[key]))});
@@ -198,7 +199,7 @@ function saveGame(){
       buildings:buildings,fortPieces:fortPieces,
       expedition:expedition,army:army,armyCampIndex:outsideEnemyCamps.indexOf(expeditionArmy.targetCamp),
       raid:raid,battleActions:battleActions,mode:gameMode==="outside"?"outside":"base",
-      nodes:outsideNodes,
+      nodes:outsideNodes,explorationSites:explorationSites,exploredCells:Array.from(exploredCells),
       camps:outsideEnemyCamps.map(function(c){return {active:c.active,health:c.health,maxHealth:c.maxHealth,units:c.units};})
     }));
     return true;
@@ -227,6 +228,8 @@ function loadGame(){
       if(data.raid){Object.assign(baseRaid,data.raid);baseRaid.enemies.forEach(function(e){reposition(e);e.attackVictim=baseRaid.defenders[e.attackVictimIndex]||null;e.attackFort=fortPieces[e.attackFortIndex]||null;delete e.attackFortIndex;delete e.attackVictimIndex;});baseRaid.defenders.forEach(function(d){reposition(d);d.target=null;});}
       if(data.battleActions)Object.assign(battleActions,data.battleActions);
       if(Array.isArray(data.nodes))data.nodes.forEach(function(n,i){if(outsideNodes[i])Object.assign(outsideNodes[i],n)});
+      if(Array.isArray(data.explorationSites))data.explorationSites.forEach(function(saved){const site=explorationSites.find(function(p){return p.id===saved.id});if(site){site.claimed=!!saved.claimed;site.discovered=!!saved.discovered;}});
+      if(Array.isArray(data.exploredCells))data.exploredCells.forEach(function(key){if(/^([0-9]|[12][0-9]|3[01]),([0-9]|1[0-9]|2[0-3])$/.test(key))exploredCells.add(key)});
       restoredMode=baseRaid.active?"base":(data.mode==="outside"?"outside":"base");
       restoredSession=true;
     }
@@ -1301,6 +1304,7 @@ function colonyIncomePerSecond(){
 function productionTick(){
   if(paused)return;
 
+  if(explorationSites.some(function(site){return site.id==="outpost"&&site.claimed}))colony.iron+=1;
   // Passive colony economy.
   colony.credits+=colonyIncomePerSecond();
 
@@ -1587,6 +1591,49 @@ document.getElementById("baseModeBtn").onclick=function(){setMode("base")};
 document.getElementById("layoutModeBtn").onclick=function(){setMode("layout")};
 document.getElementById("outsideModeBtn").onclick=function(){setMode("outside")};
 document.getElementById("returnBaseBtn").onclick=function(){setMode("base")};
+
+
+const explorationSites=[
+  {id:"ruin",name:"Research Ruin",sprite:"research_ruin.png",x:.38,y:.32,claimed:false,discovered:false},
+  {id:"outpost",name:"Mining Outpost",sprite:"mining_outpost.png",x:.60,y:.55,claimed:false,discovered:false},
+  {id:"cache",name:"Supply Cache",sprite:"supply_cache.png",x:.30,y:.65,claimed:false,discovered:false}
+];
+const exploredCells=new Set();
+function updateExplorationDiscoveries(){
+  const scouts=[expedition,expeditionArmy].filter(function(a){return a===expedition||a.active});
+  scouts.forEach(function(a){
+    const gx=Math.max(0,Math.min(31,Math.floor(a.x/innerWidth*32))),gy=Math.max(0,Math.min(23,Math.floor(a.y/innerHeight*24)));
+    for(let y=Math.max(0,gy-1);y<=Math.min(23,gy+1);y++)for(let x=Math.max(0,gx-1);x<=Math.min(31,gx+1);x++)exploredCells.add(x+","+y);
+  });
+  explorationSites.forEach(function(site){
+    const x=site.x*innerWidth,y=site.y*innerHeight;
+    const distance=Math.min.apply(null,scouts.map(function(a){return Math.hypot(a.x-x,a.y-y)}));
+    if(distance<180)site.discovered=true;
+    if(site.claimed||distance>65)return;
+    site.claimed=true;
+    if(site.id==="ruin"){colony.credits+=250;colony.iron+=30;statusEl.textContent="Research ruin salvaged: +$250 and +30 iron.";}
+    else if(site.id==="outpost"){statusEl.textContent="Mining outpost captured! Produces +1 iron/s while the colony is running.";}
+    else{colony.credits+=100;colony.iron+=15;expedition.suitOxygen=Math.min(100,expedition.suitOxygen+25);statusEl.textContent="Supply cache opened: +$100, +15 iron and +25 suit oxygen.";}
+    updateHUD();saveGame();
+  });
+}
+function drawExplorationSites(){
+  explorationSites.forEach(function(site){
+    if(!site.discovered)return;
+    const x=site.x*innerWidth,y=site.y*innerHeight,size=site.id==="cache"?GRID*.72:GRID*1.4;
+    drawImageCentered("Exploration/"+site.sprite,x,y,size,size);
+    ctx.save();ctx.textAlign="center";ctx.font="bold 11px Arial";
+    ctx.fillStyle="rgba(9,18,22,.9)";ctx.fillRect(x-88,y-size*.48-28,176,36);
+    ctx.fillStyle=site.claimed?"#84e09d":"#ffd184";ctx.fillText(site.name+(site.claimed?" ✓":""),x,y-size*.48-14);
+    ctx.font="10px Arial";ctx.fillStyle="#dbe7eb";
+    ctx.fillText(site.claimed?(site.id==="outpost"?"+1 iron/s":"Salvaged"):"Approach to "+(site.id==="outpost"?"capture":"salvage"),x,y-size*.48);
+    ctx.restore();
+  });
+  if(expeditionArmy.targetCamp){
+    const p=campScreenPos(expeditionArmy.targetCamp);
+    ctx.save();ctx.strokeStyle="#ffd174";ctx.lineWidth=2;ctx.setLineDash([6,8]);ctx.beginPath();ctx.moveTo(expeditionArmy.x,expeditionArmy.y);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.restore();
+  }
+}
 
 const outsideNodes=[
   {type:"iron",sprite:"iron_ore.png",x:.18,y:.28,amount:22,active:true},
@@ -2142,6 +2189,7 @@ function drawOutsideFog(){
     fogCtx.beginPath();fogCtx.arc(x,y,r,0,Math.PI*2);fogCtx.fill();
   }
 
+  exploredCells.forEach(function(key){const cell=key.split(",").map(Number);reveal((cell[0]+.5)/32*innerWidth,(cell[1]+.5)/24*innerHeight,Math.max(innerWidth/32,innerHeight/24)*1.8);});
   reveal(innerWidth*.5,innerHeight*.88,220);
   reveal(expedition.x,expedition.y,165+researchState.exploration*25);
   reveal(expeditionArmy.x,expeditionArmy.y,190+researchState.exploration*25);
@@ -2163,6 +2211,7 @@ function drawOutsideTerrain(){
   outsideEnemyCamps.forEach(drawEnemyCamp);
   drawEnemyPatrols();
   outsideNodes.forEach(function(n){if(n.active)drawImageCentered(n.sprite,n.x*innerWidth,n.y*innerHeight,GRID*1.25,GRID*1.25)});
+  drawExplorationSites();
   drawImageCentered("colonist_1.png",expedition.x,expedition.y,GRID*.65,GRID*.65);drawPlayerCombatHUD();drawArmyConvoy();drawCombatFx();drawOutsideFog();
 }
 function updateOutside(dt){
@@ -2221,6 +2270,7 @@ function updateOutside(dt){
       statusEl.textContent="Collected "+take+" "+(n.type==="ice"?"ice":"ore")+".";
     }
   });
+  updateExplorationDiscoveries();
   updateExpeditionHUD();
 }
 const oldCanvasPointer=canvas.onpointerdown;
