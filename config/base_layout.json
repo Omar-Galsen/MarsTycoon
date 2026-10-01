@@ -18,7 +18,7 @@
       "y": 198,
       "nx": 0.8595,
       "ny": 0.1513,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -198,7 +198,7 @@
       "y": 96,
       "nx": 0.8432,
       "ny": 0.006,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -207,7 +207,7 @@
       "y": 122,
       "nx": 0.8432,
       "ny": 0.0424,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -216,7 +216,7 @@
       "y": 147,
       "nx": 0.8595,
       "ny": 0.0787,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -225,7 +225,7 @@
       "y": 147,
       "nx": 0.8432,
       "ny": 0.0787,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -234,7 +234,7 @@
       "y": 172,
       "nx": 0.8432,
       "ny": 0.1149,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -243,7 +243,7 @@
       "y": 198,
       "nx": 0.8432,
       "ny": 0.1513,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -252,7 +252,7 @@
       "y": 223,
       "nx": 0.8432,
       "ny": 0.1876,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -261,7 +261,7 @@
       "y": 274,
       "nx": 0.8432,
       "ny": 0.2602,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -270,7 +270,7 @@
       "y": 248,
       "nx": 0.8432,
       "ny": 0.2238,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -279,7 +279,7 @@
       "y": 299,
       "nx": 0.8432,
       "ny": 0.2964,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -288,7 +288,7 @@
       "y": 325,
       "nx": 0.8432,
       "ny": 0.3327,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -297,7 +297,7 @@
       "y": 350,
       "nx": 0.8432,
       "ny": 0.3691,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -306,7 +306,7 @@
       "y": 375,
       "nx": 0.8432,
       "ny": 0.4053,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -315,7 +315,7 @@
       "y": 401,
       "nx": 0.8432,
       "ny": 0.4416,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -324,7 +324,7 @@
       "y": 426,
       "nx": 0.8432,
       "ny": 0.478,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -333,7 +333,7 @@
       "y": 451,
       "nx": 0.8432,
       "ny": 0.5142,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -342,7 +342,7 @@
       "y": 477,
       "nx": 0.8432,
       "ny": 0.5505,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -351,7 +351,7 @@
       "y": 502,
       "nx": 0.8432,
       "ny": 0.5869,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -360,7 +360,7 @@
       "y": 528,
       "nx": 0.8432,
       "ny": 0.6231,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -369,7 +369,7 @@
       "y": 553,
       "nx": 0.8432,
       "ny": 0.6594,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -378,7 +378,7 @@
       "y": 578,
       "nx": 0.8432,
       "ny": 0.6958,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -387,7 +387,7 @@
       "y": 604,
       "nx": 0.8432,
       "ny": 0.732,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -396,7 +396,7 @@
       "y": 629,
       "nx": 0.8432,
       "ny": 0.7684,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -405,7 +405,7 @@
       "y": 654,
       "nx": 0.8432,
       "ny": 0.8047,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -414,7 +414,7 @@
       "y": 680,
       "nx": 0.8432,
       "ny": 0.8409,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -423,7 +423,7 @@
       "y": 705,
       "nx": 0.8432,
       "ny": 0.8773,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "wall",
@@ -432,7 +432,7 @@
       "y": 731,
       "nx": 0.8432,
       "ny": 0.9135,
-      "rotation": 0
+      "rotation": 90
     },
     {
       "type": "corner",
