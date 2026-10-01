@@ -4,7 +4,7 @@ const statusEl=document.getElementById("status");
 const buildMenu=document.getElementById("buildMenu");
 const GRID=96,ASSET="Assets/sprites/",BASE_ASSET="Assets/sprites/BaseBuilder/",ENEMY_ASSET=ASSET+"Enemy/",ROAD_ASSET=BASE_ASSET+"Roads/",WALL_ASSET=BASE_ASSET+"Walls/",PLAZA_ASSET=BASE_ASSET+"Plazas/",DECOR_ASSET=BASE_ASSET+"Decor/";
 const spriteFiles=["mars_base_background.png","mars_soldier.png","barrel.png","colonist_1.png","colonist_2.png","colonist_3.png","colonist_4.png","colonist_5.png","crater_large.png","crater_small.png","drone_large.png","drone_small.png","dune_small.png","flag.png","habitat.png","habitat_small.png","ice_deposit.png","iron_ore.png","lamp_post.png","life_support_tower.png","miner.png","oxygen_plant.png","plant_rock_cluster.png","plants_cluster.png","radio_tower.png","rare_minerals.png","regolith.png","resource_crate.png","ridge_1.png","ridge_2.png","robot_worker.png","rock_small_1.png","rock_small_2.png","rock_spire.png","rocket_export.png","rocks_mid.png","rover.png","satellite_dish.png","solar_array_large.png","solar_panel.png","spire_cluster.png","storage.png","storage_large.png","supply_box.png","tank_station_1.png","tank_station_2.png","terminal.png","terrain_1_1.png","terrain_1_2.png","terrain_1_3.png","terrain_1_4.png","terrain_1_5.png","terrain_2_1.png","terrain_2_2.png","terrain_2_3.png","terrain_2_4.png","terrain_2_5.png","terrain_3_1.png","terrain_3_2.png","terrain_3_3.png","terrain_3_4.png","terrain_3_5.png","ui_build_button.png","ui_demolish_button.png","ui_fast_button.png","ui_health_bars.png","ui_menu_button.png","ui_pause_button.png","ui_resources_panel.png","ui_selection.png","ui_sell_button.png","ui_settings_button.png","ui_upgrade_button.png","water_extractor.png","wind_sensor.png","command_center.png","base_gate.png","greenhouse_1.png","greenhouse_2.png","planter_1.png","planter_2.png","refinery.png","rover_garage.png","road_tile_1.png","road_tile_2.png","wall_1.png","wall_2.png","wall_3.png","wall_4.png","ore_crate.png","transport_rover.png"];
-const enemyFiles=["wild_monster.png"];
+const enemyFiles=["wild_monster.png","Attack/wild_monster_attack_01.png","Attack/wild_monster_attack_02.png","Attack/wild_monster_attack_03.png","Attack/wild_monster_attack_04.png","Attack/wild_monster_attack_05.png","Attack/wild_monster_attack_06.png","Attack/wild_monster_attack_07.png","Attack/wild_monster_attack_08.png"];
 const baseBuilderFiles=["command_center.png","habitat_dome_small.png","habitat_dome_large.png","water_processing_complex.png","solar_power_station.png","life_support_complex.png","greenhouse_complex.png","storage_warehouse.png","industrial_refinery.png","satellite_comms_center.png","rover_garage.png","landing_pad.png","base_gate.png","wall_tower.png","wall_straight.png","wall_corner.png","road_straight.png","road_corner.png","road_cross.png","build_pad.png","garden_planter.png","fountain_plaza.png","exploration_rover.png","astronaut.png","utility_drone.png","cargo_crates.png"];
 const puzzleFiles={
   "P/Roads/road_straight.png":ROAD_ASSET+"road_straight.png",
@@ -1445,6 +1445,19 @@ function drawEnemyUnit(camp,u){
   ctx.restore();
   drawHealthBar(x,y-26,34,5,u.hp/u.maxHp,currentFaction().accent);
 }
+function monsterAttackFrame(camp,x,y){
+  // Attack animation plays only when the monster is actively engaged and a target is close.
+  const armyDist=Math.hypot(expeditionArmy.x-x,expeditionArmy.y-y);
+  const playerDist=Math.hypot(expedition.x-x,expedition.y-y);
+  const targetDist=Math.min(armyDist,playerDist);
+  const engaged=expeditionArmy.targetCamp===camp||targetDist<210;
+  if(!engaged)return null;
+
+  // 8-frame loop: wind-up -> slash -> recover -> repeat.
+  const frame=1+(Math.floor(performance.now()/110)%8);
+  return "Enemy/Attack/wild_monster_attack_"+String(frame).padStart(2,"0")+".png";
+}
+
 function drawEnemyCamp(camp){
   if(!camp.active)return;
   const p=campScreenPos(camp),x=p.x,y=p.y,s=GRID*camp.size;
@@ -1452,12 +1465,19 @@ function drawEnemyCamp(camp){
   const faction=currentFaction();
   ctx.fillStyle=campaign.selectedSector===3?"rgba(28,53,72,.40)":(campaign.selectedSector===2?"rgba(92,24,22,.42)":"rgba(82,24,18,.38)");
   ctx.beginPath();ctx.ellipse(x,y+18,s*.92,s*.48,0,0,Math.PI*2);ctx.fill();
-  const monsterFile=images["Enemy/wild_monster.png"]?"Enemy/wild_monster.png":"habitat_small.png";
+  const idleFile=images["Enemy/wild_monster.png"]?"Enemy/wild_monster.png":"habitat_small.png";
   const armyDist=Math.hypot(expeditionArmy.x-x,expeditionArmy.y-y);
   const playerDist=Math.hypot(expedition.x-x,expedition.y-y);
   const targetX=(expeditionArmy.active&&armyDist<playerDist)?expeditionArmy.x:expedition.x;
-  if(monsterFile==="Enemy/wild_monster.png")drawFacingImageCentered(monsterFile,x,y,s*1.55,s*1.35,targetX);
-  else drawImageCentered(monsterFile,x,y,s*1.55,s*1.35);
+  const attackFile=monsterAttackFrame(camp,x,y);
+  const monsterFile=(attackFile&&images[attackFile])?attackFile:idleFile;
+
+  if(monsterFile.indexOf("Enemy/")===0){
+    const attackScale=attackFile?1.72:1.55;
+    drawFacingImageCentered(monsterFile,x,y,s*attackScale,s*(attackFile?1.48:1.35),targetX);
+  }else{
+    drawImageCentered(monsterFile,x,y,s*1.55,s*1.35);
+  }
   drawImageCentered("resource_crate.png",x-s*.55,y+s*.24,s*.4,s*.4);
   drawImageCentered("barrel.png",x+s*.55,y+s*.20,s*.32,s*.32);
   liveCampUnits(camp).forEach(function(u){drawEnemyUnit(camp,u)});
