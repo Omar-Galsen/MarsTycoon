@@ -464,6 +464,17 @@ function baseArt(name,fallback){
 }
 function spriteCatalog(){const grid=document.getElementById("catalogGrid");grid.innerHTML="";spriteFiles.forEach(function(file){const item=document.createElement("div");item.className="catalog-item";item.innerHTML='<img src="'+ASSET+file+'" alt=""><div>'+file+"</div>";grid.appendChild(item)})}
 function drawImageCentered(file,cx,cy,maxW,maxH){const img=images[file];if(!img)return;const s=Math.min(maxW/img.width,maxH/img.height),w=img.width*s,h=img.height*s;ctx.drawImage(img,cx-w/2,cy-h/2,w,h)}
+function drawFacingImageCentered(file,cx,cy,maxW,maxH,targetX){
+  const img=images[file];if(!img)return;
+  const s=Math.min(maxW/img.width,maxH/img.height),w=img.width*s,h=img.height*s;
+  // The monster artwork faces right by default. Mirror it whenever the target is left.
+  const faceRight=targetX>=cx;
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.scale(faceRight?1:-1,1);
+  ctx.drawImage(img,-w/2,-h/2,w,h);
+  ctx.restore();
+}
 function drawTerrain(){
   const bg=images["mars_base_background.png"];
   if(bg){
@@ -1441,7 +1452,12 @@ function drawEnemyCamp(camp){
   const faction=currentFaction();
   ctx.fillStyle=campaign.selectedSector===3?"rgba(28,53,72,.40)":(campaign.selectedSector===2?"rgba(92,24,22,.42)":"rgba(82,24,18,.38)");
   ctx.beginPath();ctx.ellipse(x,y+18,s*.92,s*.48,0,0,Math.PI*2);ctx.fill();
-  drawImageCentered(images["Enemy/wild_monster.png"]?"Enemy/wild_monster.png":"habitat_small.png",x,y,s*1.55,s*1.35);
+  const monsterFile=images["Enemy/wild_monster.png"]?"Enemy/wild_monster.png":"habitat_small.png";
+  const armyDist=Math.hypot(expeditionArmy.x-x,expeditionArmy.y-y);
+  const playerDist=Math.hypot(expedition.x-x,expedition.y-y);
+  const targetX=(expeditionArmy.active&&armyDist<playerDist)?expeditionArmy.x:expedition.x;
+  if(monsterFile==="Enemy/wild_monster.png")drawFacingImageCentered(monsterFile,x,y,s*1.55,s*1.35,targetX);
+  else drawImageCentered(monsterFile,x,y,s*1.55,s*1.35);
   drawImageCentered("resource_crate.png",x-s*.55,y+s*.24,s*.4,s*.4);
   drawImageCentered("barrel.png",x+s*.55,y+s*.20,s*.32,s*.32);
   liveCampUnits(camp).forEach(function(u){drawEnemyUnit(camp,u)});
