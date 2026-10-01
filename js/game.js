@@ -44,18 +44,19 @@ const fortPieces=[];
 const expedition={x:innerWidth*0.5,y:innerHeight*0.5,targetX:null,targetY:null,cargo:0,capacity:40,suitOxygen:100,harvestCooldown:0,health:100,attackCooldown:0};
 const expeditionArmy={
   x:innerWidth*.5,y:innerHeight*.9,targetCamp:null,speed:135,attackCooldown:0,
+  heading:-Math.PI/2,moveSpeed:0,maxMoveSpeed:135,turnRate:2.6,
   health:320,maxHealth:320,active:true,
   vehicles:[
     {ox:0,oy:0,health:120,maxHealth:120},
-    {ox:-52,oy:34,health:90,maxHealth:90},
-    {ox:52,oy:34,health:90,maxHealth:90}
+    {ox:-34,oy:62,health:90,maxHealth:90},
+    {ox:34,oy:62,health:90,maxHealth:90}
   ],
   soldiers:[
-    {ox:-28,oy:54,health:55,maxHealth:55},
-    {ox:0,oy:62,health:55,maxHealth:55},
-    {ox:28,oy:54,health:55,maxHealth:55},
-    {ox:-46,oy:72,health:45,maxHealth:45},
-    {ox:46,oy:72,health:45,maxHealth:45}
+    {ox:-22,oy:108,health:55,maxHealth:55},
+    {ox:0,oy:116,health:55,maxHealth:55},
+    {ox:22,oy:108,health:55,maxHealth:55},
+    {ox:-38,oy:144,health:45,maxHealth:45},
+    {ox:38,oy:144,health:45,maxHealth:45}
   ]
 };
 const combatProjectiles=[];
@@ -735,7 +736,7 @@ function setMode(mode){
   if(mode==="layout"){paused=true;selectedPlaced=null;hideSelectedPanel();refreshLayoutOutput();refreshFortStatus();statusEl.textContent="Layout mode: build the fort or switch to BUILDINGS to drag structures.";}
   else if(mode==="outside"){
     selectedPlaced=null;hideSelectedPanel();
-    expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.targetCamp=null;resetEnemyPatrols();
+    expedition.x=innerWidth*.5;expedition.y=innerHeight*.58;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();
     statusEl.textContent="Tap terrain to move. Tap an enemy camp to deploy the military convoy and engage automatically.";
   }else if(mode==="base"){
     paused=false;
@@ -817,7 +818,7 @@ function updateExpeditionHUD(){
 }
 function depositCargo(){
   if(expedition.cargo>0){colony.iron+=expedition.cargo;statusEl.textContent="Returned with "+Math.floor(expedition.cargo)+" ore.";expedition.cargo=0}
-  expedition.suitOxygen=100;expedition.health=100;expeditionArmy.health=expeditionArmy.maxHealth;expeditionArmy.vehicles.forEach(function(v){v.health=v.maxHealth});expeditionArmy.soldiers.forEach(function(s){s.health=s.maxHealth});expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.targetCamp=null;resetEnemyPatrols();resetOutsideNodes();updateHUD();updateExpeditionHUD();
+  expedition.suitOxygen=100;expedition.health=100;expeditionArmy.health=expeditionArmy.maxHealth;expeditionArmy.vehicles.forEach(function(v){v.health=v.maxHealth});expeditionArmy.soldiers.forEach(function(s){s.health=s.maxHealth});expeditionArmy.x=innerWidth*.5;expeditionArmy.y=innerHeight*.9;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();resetOutsideNodes();updateHUD();updateExpeditionHUD();
 }
 function resetEnemyPatrols(){
   enemyPatrolVehicles.forEach(function(v){
@@ -917,6 +918,7 @@ function dispatchArmyToCamp(camp){
   if(!camp||!camp.active)return false;
   expeditionArmy.targetCamp=camp;
   expeditionArmy.active=true;
+  expeditionArmy.moveSpeed=0;
   livePatrolsForCamp(camp).forEach(function(v){v.launched=true});
   statusEl.textContent="Army convoy dispatched to "+camp.name+". Enemy patrols are mobilizing.";
   return true;
@@ -926,12 +928,27 @@ function updateArmy(dt){
   const camp=expeditionArmy.targetCamp;
   if(!camp.active){expeditionArmy.targetCamp=null;return}
   const p=campScreenPos(camp),dx=p.x-expeditionArmy.x,dy=p.y-expeditionArmy.y,dist=Math.hypot(dx,dy);
-  if(dist>105){
-    expeditionArmy.x+=dx/dist*expeditionArmy.speed*dt;
-    expeditionArmy.y+=dy/dist*expeditionArmy.speed*dt;
+  if(dist>118){
+    const desired=Math.atan2(dy,dx);
+    let delta=((desired-expeditionArmy.heading+Math.PI*3)%(Math.PI*2))-Math.PI;
+    const maxTurn=expeditionArmy.turnRate*dt;
+    delta=Math.max(-maxTurn,Math.min(maxTurn,delta));
+    expeditionArmy.heading+=delta;
+
+    // Slow down for sharp turns and when approaching the camp.
+    const turnSlow=1-Math.min(.65,Math.abs(delta)/(maxTurn||1)*.45);
+    const approachSlow=Math.max(.35,Math.min(1,(dist-118)/240));
+    const targetSpeed=expeditionArmy.maxMoveSpeed*turnSlow*approachSlow;
+    const accel=210*dt;
+    if(expeditionArmy.moveSpeed<targetSpeed) expeditionArmy.moveSpeed=Math.min(targetSpeed,expeditionArmy.moveSpeed+accel);
+    else expeditionArmy.moveSpeed=Math.max(targetSpeed,expeditionArmy.moveSpeed-accel*1.4);
+
+    expeditionArmy.x+=Math.cos(expeditionArmy.heading)*expeditionArmy.moveSpeed*dt;
+    expeditionArmy.y+=Math.sin(expeditionArmy.heading)*expeditionArmy.moveSpeed*dt;
     statusEl.textContent="Army convoy moving to "+camp.name+".";
     return;
   }
+  expeditionArmy.moveSpeed=Math.max(0,expeditionArmy.moveSpeed-260*dt);
 
   if(expeditionArmy.attackCooldown>0)expeditionArmy.attackCooldown-=dt;
   if(expeditionArmy.attackCooldown>0)return;
@@ -987,19 +1004,22 @@ function updateArmy(dt){
 }
 function drawArmyConvoy(){
   if(gameMode!=="outside"||!expeditionArmy.active)return;
-  const angle=expeditionArmy.targetCamp
-    ?Math.atan2(expeditionArmy.targetCamp.y*innerHeight-expeditionArmy.y,expeditionArmy.targetCamp.x*innerWidth-expeditionArmy.x)
-    :-Math.PI/2;
-  const cos=Math.cos(angle),sin=Math.sin(angle);
+  const angle=expeditionArmy.heading;
+  const fx=Math.cos(angle),fy=Math.sin(angle);
+  const rx=-fy,ry=fx;
   function transform(ox,oy){
-    return {x:expeditionArmy.x+ox*cos-oy*sin,y:expeditionArmy.y+ox*sin+oy*cos};
+    // ox = side-to-side offset, oy = distance BEHIND the lead vehicle.
+    return {
+      x:expeditionArmy.x+rx*ox-fx*oy,
+      y:expeditionArmy.y+ry*ox-fy*oy
+    };
   }
 
   expeditionArmy.vehicles.forEach(function(v,i){
     if(v.health<=0)return;
     const p=transform(v.ox,v.oy);
     const file=i===0?"transport_rover.png":"rover.png";
-    drawRotated(file,p.x,p.y,GRID*(i===0?1.05:.78),GRID*(i===0?.72:.58),angle+Math.PI/2);
+    drawRotated(file,p.x,p.y,GRID*(i===0?1.05:.78),GRID*(i===0?.72:.58),angle);
     drawHealthBar(p.x,p.y-28,40,5,v.health/v.maxHealth,"#79d173");
   });
 
@@ -1010,7 +1030,7 @@ function drawArmyConvoy(){
     if(fighting&&images["mars_soldier.png"]){
       // New armored Mars infantry artwork.
       // Slight overlap is intentional so the squad reads as a formation.
-      drawImageCentered("mars_soldier.png",p.x,p.y-9,GRID*.48,GRID*.48);
+      drawImageCentered("mars_soldier.png",p.x,p.y-9,GRID*.44,GRID*.44);
       drawHealthBar(p.x,p.y-34,30,4,s.health/s.maxHealth,"#79d173");
     }else{
       ctx.save();
