@@ -65,10 +65,36 @@ const combatExplosions=[];
 const GAME_SAVE_KEY="marsTycoonSaveV2";
 const campaign={
   sector:1,
+  selectedSector:1,
   campsCleared:0,
   raidsWon:0,
   nextRaid:55,
   raidCooldown:0
+};
+const researchState={
+  military:0,
+  engineering:0,
+  exploration:0
+};
+const researchData={
+  military:{
+    name:"Military Systems",
+    desc:"Improves convoy weapons and automated base defenses.",
+    effects:["Convoy damage +10% / level","Turret damage +6 / level","Raid response fire rate improved"],
+    cost:function(lv){return {credits:260+lv*220,iron:35+lv*30}}
+  },
+  engineering:{
+    name:"Fortification Engineering",
+    desc:"Reinforces the south gate and speeds colony construction.",
+    effects:["Gate health +60 / level","Construction time -10% / level","Repair losses reduced"],
+    cost:function(lv){return {credits:220+lv*190,iron:45+lv*28}}
+  },
+  exploration:{
+    name:"Expedition Logistics",
+    desc:"Extends scouting range and improves convoy mobility and cargo.",
+    effects:["Cargo +10 / level","Fog reveal +25px / level","Convoy speed +8% / level"],
+    cost:function(lv){return {credits:200+lv*180,iron:30+lv*25}}
+  }
 };
 const baseRaid={
   active:false,
@@ -81,11 +107,71 @@ const baseRaid={
 const fogCanvas=document.createElement("canvas");
 const fogCtx=fogCanvas.getContext("2d");
 
+function researchCost(key){
+  const level=researchState[key]||0;
+  return researchData[key].cost(level);
+}
+function applyResearchBonuses(){
+  expedition.capacity=40+researchState.exploration*10;
+  expeditionArmy.maxMoveSpeed=135*(1+researchState.exploration*.08);
+  baseRaid.gateMaxHealth=220+researchState.engineering*60;
+  if(!baseRaid.active)baseRaid.gateHealth=baseRaid.gateMaxHealth;
+}
+function buyResearch(key){
+  const level=researchState[key]||0;
+  if(level>=3)return;
+  const cost=researchCost(key);
+  if(colony.credits<cost.credits||colony.iron<cost.iron){
+    statusEl.textContent="Not enough resources for research.";
+    return;
+  }
+  colony.credits-=cost.credits;
+  colony.iron-=cost.iron;
+  researchState[key]=level+1;
+  applyResearchBonuses();
+  renderResearchPanel();
+  updateHUD();updateExpeditionHUD();saveGame();
+  statusEl.textContent=researchData[key].name+" upgraded to Lv."+researchState[key]+".";
+}
+function renderResearchPanel(){
+  const grid=document.getElementById("researchGrid");
+  if(!grid)return;
+  grid.innerHTML="";
+  Object.keys(researchData).forEach(function(key){
+    const d=researchData[key],level=researchState[key]||0,cost=researchCost(key);
+    const card=document.createElement("div");
+    card.className="research-card"+(level>=3?" maxed":"");
+    card.innerHTML="<h3>"+d.name+"</h3>"+
+      '<div class="research-level">LEVEL '+level+" / 3</div>"+
+      '<div class="research-desc">'+d.desc+"</div>"+
+      '<div class="research-effects">'+d.effects.map(function(x){return "• "+x}).join("<br>")+"</div>"+
+      '<button class="research-buy" '+(level>=3?"disabled":"")+">"+
+      (level>=3?"MAX LEVEL":"RESEARCH • $"+cost.credits+" + "+cost.iron+" iron")+"</button>";
+    const btn=card.querySelector("button");
+    if(level<3)btn.onclick=function(){buyResearch(key)};
+    grid.appendChild(card);
+  });
+}
+function openResearch(){
+  document.body.classList.add("research-mode");
+  document.getElementById("researchPanel").classList.remove("hidden");
+  renderResearchPanel();
+  paused=true;
+}
+function closeResearch(){
+  document.body.classList.remove("research-mode");
+  document.getElementById("researchPanel").classList.add("hidden");
+  paused=false;
+}
+document.getElementById("researchModeBtn").onclick=openResearch;
+document.getElementById("closeResearchBtn").onclick=closeResearch;
+
 function saveGame(){
   try{
     localStorage.setItem(GAME_SAVE_KEY,JSON.stringify({
       colony:colony,
       campaign:campaign,
+      research:researchState,
       camps:outsideEnemyCamps.map(function(c){return {active:c.active,health:c.health};})
     }));
   }catch(e){}
@@ -97,6 +183,7 @@ function loadGame(){
     const data=JSON.parse(raw);
     if(data.colony)Object.assign(colony,data.colony);
     if(data.campaign)Object.assign(campaign,data.campaign);
+    if(data.research)Object.assign(researchState,data.research);
     if(Array.isArray(data.camps)){
       data.camps.forEach(function(s,i){
         if(outsideEnemyCamps[i]&&s){
@@ -334,7 +421,8 @@ function canUpgrade(b){const c=upgradeCost(b);return !isConstructing(b)&&colony.
 function constructionTimeFor(type){
   const d=buildingData[type];
   if(!d)return 8;
-  return Math.max(6,Math.min(30,Math.round(d.cost/35)));
+  const base=Math.max(6,Math.min(30,Math.round(d.cost/35)));
+  return Math.max(3,Math.round(base*(1-researchState.engineering*.10)));
 }
 function isConstructing(b){return (b.constructionRemaining||0)>0}
 function constructionLabel(b){return Math.max(0,Math.ceil(b.constructionRemaining||0))+"s"}
@@ -532,26 +620,28 @@ function updateBaseRaid(dt){
     }
   });
 
-  // Friendly military yard automatically defends the gate.
+  // Friendly deployment yard + two south defense turrets defend the gate.
   baseRaid.attackCooldown-=dt;
   if(baseRaid.attackCooldown<=0){
     const target=baseRaid.enemies.find(function(e){return e.active&&e.hp>0});
     if(target){
-      const fireX=b.cx,fireY=b.bottom-115;
+      const turretSide=(Math.random()<.5?-1:1);
+      const u=Math.min(b.w/11.5,b.h/7.6);
+      const fireX=b.cx+turretSide*u*2.35,fireY=b.bottom-u*.60;
       spawnTracer(fireX,fireY,target.x,target.y,false);
-      target.hp-=24+campaign.sector*3;
+      target.hp-=24+campaign.sector*3+researchState.military*6;
       if(target.hp<=0){
         target.active=false;
         spawnExplosion(target.x,target.y,25);
       }
-      baseRaid.attackCooldown=.5;
+      baseRaid.attackCooldown=Math.max(.24,.5-researchState.military*.06);
     }
   }
 
   if(baseRaid.gateHealth<=0){
     baseRaid.active=false;
-    colony.credits=Math.max(0,colony.credits-150);
-    colony.iron=Math.max(0,colony.iron-25);
+    colony.credits=Math.max(0,colony.credits-(150-researchState.engineering*25));
+    colony.iron=Math.max(0,colony.iron-(25-researchState.engineering*4));
     campaign.nextRaid=75;
     statusEl.textContent="South gate breached. Repairs cost $150 and 25 iron.";
     updateHUD();saveGame();
@@ -567,6 +657,25 @@ function updateBaseRaid(dt){
     updateHUD();updateMissions();saveGame();
   }
 }
+function drawDefenseTurrets(){
+  const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
+  const pts=[
+    {x:b.cx-u*2.35,y:b.bottom-u*.60},
+    {x:b.cx+u*2.35,y:b.bottom-u*.60}
+  ];
+  pts.forEach(function(p){
+    ctx.save();
+    ctx.fillStyle="#252a2e";
+    ctx.strokeStyle="#e89a43";
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(p.x,p.y,u*.24,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle="#59636b";
+    ctx.fillRect(p.x-u*.06,p.y-u*.34,u*.12,u*.34);
+    ctx.fillStyle="#ffb34f";
+    ctx.beginPath();ctx.arc(p.x,p.y-u*.35,u*.07,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  });
+}
 function drawBaseRaid(){
   if(!baseRaid.active)return;
   const b=baseGeometry(),gateX=b.cx,gateY=b.bottom-18;
@@ -576,6 +685,7 @@ function drawBaseRaid(){
     drawRotated("rover.png",e.x,e.y,GRID*.75,GRID*.55,a);
     drawHealthBar(e.x,e.y-27,42,5,e.hp/e.maxHp,"#d85b4b");
   });
+  drawDefenseTurrets();
   drawHealthBar(gateX,gateY-34,110,7,baseRaid.gateHealth/baseRaid.gateMaxHealth,"#79d173");
   ctx.save();
   ctx.fillStyle="rgba(10,12,14,.82)";
@@ -974,6 +1084,42 @@ function downloadLayoutData(){
 document.getElementById("copyLayoutBtn").onclick=copyLayoutData;
 document.getElementById("downloadLayoutBtn").onclick=downloadLayoutData;
 
+function sectorName(n){
+  return ["","Frontier Basin","Crimson Highlands","Valles Warzone"][n]||("Sector "+n);
+}
+function refreshSectorMap(){
+  document.querySelectorAll(".sector-btn").forEach(function(btn){
+    const n=+btn.dataset.sector;
+    const unlocked=n<=Math.min(3,campaign.sector);
+    btn.classList.toggle("locked",!unlocked);
+    btn.classList.toggle("active",n===campaign.selectedSector);
+    btn.disabled=!unlocked;
+  });
+  const el=document.getElementById("sectorStatus");
+  if(el)el.textContent="Sector "+campaign.selectedSector+" • "+sectorName(campaign.selectedSector);
+}
+function selectSector(n){
+  if(n>campaign.sector||n<1||n>3)return;
+  campaign.selectedSector=n;
+  outsideEnemyCamps.forEach(function(c,i){
+    const scale=1+(n-1)*.28;
+    c.maxHealth=Math.round([120,150,110][i]*scale);
+    c.health=c.maxHealth;
+    c.active=true;
+    c.units.forEach(function(u){
+      const base=[40,45,35][Math.min(i,2)]||40;
+      u.maxHp=Math.round(Math.max(base,u.maxHp)*scale);
+      u.hp=u.maxHp;u.cooldown=0;
+    });
+  });
+  resetEnemyPatrols();
+  refreshSectorMap();saveGame();
+  statusEl.textContent="Entered "+sectorName(n)+". Enemy strength increased.";
+}
+document.querySelectorAll(".sector-btn").forEach(function(btn){
+  btn.onclick=function(){selectSector(+btn.dataset.sector)};
+});
+
 function setMode(mode){
   gameMode=mode;
   document.body.classList.toggle("outside-mode",mode==="outside");
@@ -993,6 +1139,7 @@ function setMode(mode){
     depositCargo();
     statusEl.textContent="Back at the colony base. Military convoy staged at the south gate.";
   }
+  refreshSectorMap();
   updateExpeditionHUD();
 }
 document.getElementById("baseModeBtn").onclick=function(){setMode("base")};
@@ -1161,7 +1308,7 @@ function campThreatLabel(camp){
 }
 function advanceSectorIfCleared(){
   if(outsideEnemyCamps.some(function(c){return c.active}))return;
-  campaign.sector++;
+  campaign.sector=Math.min(3,campaign.sector+1);
   campaign.nextRaid=Math.max(28,55-campaign.sector*4);
   outsideEnemyCamps.forEach(function(c,i){
     c.maxHealth=Math.round(c.maxHealth*(1.18+campaign.sector*.03));
@@ -1227,7 +1374,7 @@ function updateArmy(dt){
   const units=liveCampUnits(camp);
   const activeVehicles=expeditionArmy.vehicles.filter(function(v){return v.health>0}).length;
   const activeSoldiers=expeditionArmy.soldiers.filter(function(s){return s.health>0}).length;
-  const attackPower=10+activeVehicles*5+activeSoldiers*2;
+  const attackPower=Math.round((10+activeVehicles*5+activeSoldiers*2)*(1+researchState.military*.10));
   const patrolThreat=nearestPatrolToArmy(190);
 
   if(patrolThreat){
@@ -1450,8 +1597,8 @@ function drawOutsideFog(){
   }
 
   reveal(innerWidth*.5,innerHeight*.88,220);
-  reveal(expedition.x,expedition.y,165);
-  reveal(expeditionArmy.x,expeditionArmy.y,190);
+  reveal(expedition.x,expedition.y,165+researchState.exploration*25);
+  reveal(expeditionArmy.x,expeditionArmy.y,190+researchState.exploration*25);
 
   // Cleared camps remain mapped.
   outsideEnemyCamps.forEach(function(c){
@@ -1552,5 +1699,5 @@ canvas.addEventListener("pointerdown",function(e){
 
 function loop(now){const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateRaidScheduler(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
-resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();loadGame();resetEnemyPatrols();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
+resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();loadGame();applyResearchBonuses();resetEnemyPatrols();refreshSectorMap();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
 loadSprites().then(function(){statusEl.textContent="Tap a building to manage or upgrade it.";requestAnimationFrame(loop);setTimeout(function(){startTutorial(false)},250)});
