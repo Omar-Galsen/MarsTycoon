@@ -216,6 +216,7 @@ function saveGame(){
       buildings:buildings,fortPieces:fortPieces,
       expedition:expedition,army:army,armyCampIndex:outsideEnemyCamps.indexOf(expeditionArmy.targetCamp),
       raid:raid,battleActions:battleActions,mode:gameMode==="outside"?"outside":"base",
+      expeditionMissions:expeditionMissionState,
       nodes:outsideNodes,explorationSites:explorationSites,exploredCells:Array.from(exploredCells),
       camps:outsideEnemyCamps.map(function(c){return {active:c.active,health:c.health,maxHealth:c.maxHealth,units:c.units};})
     }));
@@ -247,6 +248,7 @@ function loadGame(){
       if(Array.isArray(data.nodes))data.nodes.forEach(function(n,i){if(outsideNodes[i])Object.assign(outsideNodes[i],n)});
       if(Array.isArray(data.explorationSites))data.explorationSites.forEach(function(saved){const site=explorationSites.find(function(p){return p.id===saved.id});if(site){site.claimed=!!saved.claimed;site.discovered=!!saved.discovered;}});
       if(Array.isArray(data.exploredCells))data.exploredCells.forEach(function(key){if(/^([0-9]|[12][0-9]|3[01]),([0-9]|1[0-9]|2[0-3])$/.test(key))exploredCells.add(key)});
+      if(data.expeditionMissions){expeditionMissionState.completed=Array.isArray(data.expeditionMissions.completed)?data.expeditionMissions.completed.filter(function(id){return ["cache","outpost","ruin"].includes(id)}):[];expeditionMissionState.checkpoint=data.expeditionMissions.checkpoint==="outpost"?"outpost":"base";}
       restoredMode=baseRaid.active?"base":(data.mode==="outside"?"outside":"base");
       restoredSession=true;
     }
@@ -1593,7 +1595,7 @@ function setMode(mode){
   else if(mode==="outside"){
     paused=false;
     selectedPlaced=null;hideSelectedPanel();
-    expedition.x=outsideHome().x;expedition.y=outsideHome().y-70;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=outsideHome().x;expeditionArmy.y=outsideHome().y;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();
+    expedition.x=expeditionLaunchPoint().x;expedition.y=expeditionLaunchPoint().y-50;expedition.targetX=null;expedition.targetY=null;expeditionArmy.x=expeditionLaunchPoint().x;expeditionArmy.y=expeditionLaunchPoint().y;expeditionArmy.heading=-Math.PI/2;expeditionArmy.moveSpeed=0;expeditionArmy.targetCamp=null;resetEnemyPatrols();
     statusEl.textContent="Tap terrain to move. Tap an enemy camp to deploy the military convoy and engage automatically.";
   }else if(mode==="base"){
     paused=false;
@@ -1615,6 +1617,63 @@ const explorationSites=[
   {id:"outpost",name:"Mining Outpost",sprite:"mining_outpost.png",x:.25,y:.56,claimed:false,discovered:false},
   {id:"cache",name:"Supply Cache",sprite:"supply_cache.png",x:.45,y:.73,claimed:false,discovered:false}
 ];
+
+const expeditionMissionState={completed:[],checkpoint:"base"};
+const expeditionMissions=[
+ {id:"cache",title:"Recover supplies",description:"Reach the supply cache in Landing Basin.",credits:100,iron:10},
+ {id:"outpost",title:"Establish a checkpoint",description:"Capture the mining outpost in Rust Canyon.",credits:200,iron:25},
+ {id:"ruin",title:"Recover lost research",description:"Salvage the ruin in the Lost Research Zone.",credits:350,iron:40}
+];
+function activeExpeditionMission(){return expeditionMissions.find(function(m){return !expeditionMissionState.completed.includes(m.id)})||null;}
+function updateExpeditionMissions(){
+ const mission=activeExpeditionMission();
+ if(mission&&explorationSites.some(function(p){return p.id===mission.id&&p.claimed})){
+   expeditionMissionState.completed.push(mission.id);colony.credits+=mission.credits;colony.iron+=mission.iron;
+   statusEl.textContent="Mission complete: "+mission.title+"! +$"+mission.credits+" and +"+mission.iron+" iron.";
+   updateHUD();saveGame();
+ }
+}
+function expeditionLaunchPoint(){
+ const outpost=explorationSites.find(function(p){return p.id==="outpost"&&p.claimed});
+ if(expeditionMissionState.checkpoint==="outpost"&&outpost)return{x:outpost.x*OUTSIDE_WORLD.width,y:outpost.y*OUTSIDE_WORLD.height};
+ return outsideHome();
+}
+function updateOutpostCheckpoint(dt){
+ const outpost=explorationSites.find(function(p){return p.id==="outpost"&&p.claimed});
+ if(!outpost)return;
+ const x=outpost.x*OUTSIDE_WORLD.width,y=outpost.y*OUTSIDE_WORLD.height;
+ if(Math.hypot(expedition.x-x,expedition.y-y)<85){
+   expedition.suitOxygen=Math.min(100,expedition.suitOxygen+18*dt);
+ }
+}
+const expeditionMissionPanel=document.createElement("section");
+expeditionMissionPanel.style.cssText="padding:10px;margin-top:10px;background:#152329;border:1px solid #587c7b;border-radius:8px;color:#e4edf0;font:12px Arial;";
+expeditionMissionPanel.innerHTML='<strong>EXPEDITION MISSION</strong><div id="expMissionText" style="margin:8px 0"></div><button id="missionNavigateBtn">GO TO OBJECTIVE</button><div id="checkpointText" style="margin-top:10px"></div><button id="outpostNavigateBtn">GO TO OUTPOST</button> <button id="checkpointToggleBtn">START: BASE</button>';
+document.getElementById("expeditionPanel").appendChild(expeditionMissionPanel);
+function navigateExpeditionSite(id){
+ if(paused||gameMode!=="outside")return;
+ const site=explorationSites.find(function(p){return p.id===id});if(!site)return;
+ expedition.targetX=site.x*OUTSIDE_WORLD.width;expedition.targetY=site.y*OUTSIDE_WORLD.height;outsideCamera.follow="scout";
+ statusEl.textContent="Scout moving to "+site.name+".";
+}
+document.getElementById("missionNavigateBtn").onclick=function(){const mission=activeExpeditionMission();if(mission)navigateExpeditionSite(mission.id)};
+document.getElementById("outpostNavigateBtn").onclick=function(){navigateExpeditionSite("outpost")};
+document.getElementById("checkpointToggleBtn").onclick=function(){
+ if(paused)return;
+ if(!explorationSites.some(function(p){return p.id==="outpost"&&p.claimed}))return;
+ expeditionMissionState.checkpoint=expeditionMissionState.checkpoint==="base"?"outpost":"base";saveGame();refreshExpeditionMissionPanel();
+ statusEl.textContent="Next expedition starts at "+(expeditionMissionState.checkpoint==="outpost"?"the captured outpost.":"the colony.");
+};
+function refreshExpeditionMissionPanel(){
+ const mission=activeExpeditionMission(),captured=explorationSites.some(function(p){return p.id==="outpost"&&p.claimed});
+ document.getElementById("expMissionText").textContent=mission?mission.title+": "+mission.description+" Reward: $"+mission.credits+" + "+mission.iron+" iron.":"All three expedition missions completed!";
+ document.getElementById("missionNavigateBtn").disabled=!mission||paused;
+ document.getElementById("outpostNavigateBtn").disabled=!captured||paused;
+ document.getElementById("checkpointToggleBtn").disabled=!captured||paused;
+ document.getElementById("checkpointToggleBtn").textContent="START: "+expeditionMissionState.checkpoint.toUpperCase();
+ document.getElementById("checkpointText").textContent=captured?"Outpost captured: approach within 85m to refill oxygen.":"Capture the outpost to unlock oxygen refill and a new starting point.";
+}
+
 const exploredCells=new Set();
 function updateExplorationDiscoveries(){
   const scouts=[expedition,expeditionArmy].filter(function(a){return a===expedition||a.active});
@@ -1781,6 +1840,7 @@ function drawEnemyCamp(camp){
 }
 function resetOutsideNodes(){outsideNodes.forEach(function(n,i){n.amount=[22,26,18,16,10][i];n.active=true})}
 function updateExpeditionHUD(){
+  refreshExpeditionMissionPanel();
   const remaining=Math.ceil(campaign.nextRaid);
   document.getElementById("returnBaseBtn").textContent="RETURN TO BASE • Horde in "+remaining+"s";
   document.getElementById("cargoText").textContent=Math.floor(expedition.cargo)+" / "+expedition.capacity;
@@ -2318,6 +2378,7 @@ function updateOutside(dt){
     }
   });
   updateExplorationDiscoveries();
+  updateOutpostCheckpoint(dt);updateExpeditionMissions();
   updateExpeditionHUD();
 }
 const oldCanvasPointer=canvas.onpointerdown;
