@@ -184,36 +184,58 @@ const researchTopBtn=document.getElementById("researchModeBtn"); if(researchTopB
 document.getElementById("closeResearchBtn").onclick=closeResearch;
 if(researchTopBtn)researchTopBtn.onclick=openResearch;
 
+let restoredSession=false,restoredMode="base";
 function saveGame(){
   try{
+    const army=Object.assign({},expeditionArmy,{targetCamp:null});
+    const raid=Object.assign({},baseRaid,{
+      enemies:baseRaid.enemies.map(function(e){const copy=Object.assign({},e);copy.attackVictimIndex=baseRaid.defenders.indexOf(e.attackVictim);delete copy.attackVictim;return copy;}),
+      defenders:baseRaid.defenders.map(function(d){const copy=Object.assign({},d);delete copy.target;return copy;})
+    });
     localStorage.setItem(GAME_SAVE_KEY,JSON.stringify({
-      colony:colony,
-      campaign:campaign,
-      research:researchState,
-      camps:outsideEnemyCamps.map(function(c){return {active:c.active,health:c.health};})
+      version:3,viewport:{w:innerWidth,h:innerHeight},
+      colony:colony,campaign:campaign,research:researchState,
+      buildings:buildings,fortPieces:fortPieces,
+      expedition:expedition,army:army,armyCampIndex:outsideEnemyCamps.indexOf(expeditionArmy.targetCamp),
+      raid:raid,battleActions:battleActions,mode:gameMode==="outside"?"outside":"base",
+      nodes:outsideNodes,
+      camps:outsideEnemyCamps.map(function(c){return {active:c.active,health:c.health,maxHealth:c.maxHealth,units:c.units};})
     }));
-  }catch(e){}
+    return true;
+  }catch(e){statusEl.textContent="Could not save progress. Browser storage may be full.";return false;}
 }
 function loadGame(){
   try{
-    const raw=localStorage.getItem(GAME_SAVE_KEY);
-    if(!raw)return false;
+    const raw=localStorage.getItem(GAME_SAVE_KEY);if(!raw)return false;
     const data=JSON.parse(raw);
     if(data.colony)Object.assign(colony,data.colony);if(typeof colony.oil!=="number")colony.oil=40;
     if(data.campaign)Object.assign(campaign,data.campaign);
     if(data.research)Object.assign(researchState,data.research);
-    if(Array.isArray(data.camps)){
-      data.camps.forEach(function(s,i){
-        if(outsideEnemyCamps[i]&&s){
-          outsideEnemyCamps[i].active=s.active!==false;
-          outsideEnemyCamps[i].health=Math.max(0,s.health??outsideEnemyCamps[i].maxHealth);
-        }
-      });
+    if(Array.isArray(data.camps))data.camps.forEach(function(saved,i){
+      const camp=outsideEnemyCamps[i];if(!camp||!saved)return;
+      camp.active=saved.active!==false;camp.health=Math.max(0,saved.health??camp.maxHealth);
+      if(saved.maxHealth)camp.maxHealth=saved.maxHealth;
+      if(Array.isArray(saved.units))camp.units=saved.units;
+    });
+    if(data.version===3){
+      const sx=innerWidth/(data.viewport?.w||innerWidth),sy=innerHeight/(data.viewport?.h||innerHeight);
+      function reposition(actor){if(typeof actor.x==="number")actor.x*=sx;if(typeof actor.y==="number")actor.y*=sy;if(typeof actor.homeX==="number")actor.homeX*=sx;if(typeof actor.homeY==="number")actor.homeY*=sy;}
+      if(Array.isArray(data.buildings)){buildings.splice(0,buildings.length,...data.buildings.filter(function(b){return !!buildingData[b.type]}));buildings.forEach(function(b){if(!b.plotId)reposition(b)});syncBuildingsToPlots();}
+      if(Array.isArray(data.fortPieces))fortPieces.splice(0,fortPieces.length,...data.fortPieces);
+      if(data.expedition){Object.assign(expedition,data.expedition);reposition(expedition);expedition.targetX=null;expedition.targetY=null;}
+      if(data.army){Object.assign(expeditionArmy,data.army);reposition(expeditionArmy);expeditionArmy.targetCamp=outsideEnemyCamps[data.armyCampIndex]||null;}
+      if(data.raid){Object.assign(baseRaid,data.raid);baseRaid.enemies.forEach(function(e){reposition(e);e.attackVictim=baseRaid.defenders[e.attackVictimIndex]||null;delete e.attackVictimIndex;});baseRaid.defenders.forEach(function(d){reposition(d);d.target=null;});}
+      if(data.battleActions)Object.assign(battleActions,data.battleActions);
+      if(Array.isArray(data.nodes))data.nodes.forEach(function(n,i){if(outsideNodes[i])Object.assign(outsideNodes[i],n)});
+      restoredMode=baseRaid.active?"base":(data.mode==="outside"?"outside":"base");
+      restoredSession=true;
     }
     return true;
-  }catch(e){return false}
+  }catch(e){statusEl.textContent="Saved progress could not be loaded.";return false;}
 }
-setInterval(saveGame,10000);
+setInterval(saveGame,5000);
+window.addEventListener("pagehide",saveGame);
+document.addEventListener("visibilitychange",function(){if(document.hidden)saveGame()});
 // Enemy camps use monsters and guards; no patrol cars spawn or intercept the convoy.
 const enemyPatrolVehicles=[];
 
@@ -326,6 +348,7 @@ function previousTutorial(){
 document.getElementById("tutorialNextBtn")?.addEventListener("click",nextTutorial);
 document.getElementById("tutorialBackBtn")?.addEventListener("click",previousTutorial);
 document.getElementById("tutorialSkipBtn")?.addEventListener("click",skipTutorial);
+const saveBtn=document.createElement("button");saveBtn.className="zone-btn";saveBtn.textContent="SAVE";saveBtn.onclick=function(){if(saveGame())statusEl.textContent="Progress saved.";};document.getElementById("zoneSwitch").appendChild(saveBtn);
 const tutorialHelpBtn=document.createElement("button");
 tutorialHelpBtn.id="tutorialHelpBtn";tutorialHelpBtn.className="zone-btn";tutorialHelpBtn.textContent="HELP";
 tutorialHelpBtn.setAttribute("aria-label","Replay the game tutorial");
@@ -2120,4 +2143,15 @@ canvas.addEventListener("pointerdown",function(e){
 function loop(now){refreshBattleActions();refreshCycleHUD();const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;if(!paused)updateRaidScheduler(dt*speed);if(gameMode==="outside"){if(!paused)updateOutside(dt*speed);ctx.clearRect(0,0,innerWidth,innerHeight);drawOutsideTerrain();requestAnimationFrame(loop);return}if(!paused){updateUnits(dt*speed);updateConstruction(dt*speed);updateBaseRaid(dt*speed);updateCombatFx(dt*speed);simulationAccumulator+=dt*speed;while(simulationAccumulator>=1){productionTick();simulationAccumulator-=1}}ctx.clearRect(0,0,innerWidth,innerHeight);drawTerrain();drawBaseInfrastructure();drawProps();drawBuildings();drawResearchMarker();drawMilitaryDeploymentZone();drawBaseRaid();drawCombatFx();drawUnits();requestAnimationFrame(loop)}
 window.addEventListener("resize",function(){resizeCanvas();syncBuildingsToPlots();if(gameMode==="layout")refreshLayoutOutput()});
 resizeCanvas();if(!applySavedLayout(window.BASE_LAYOUT))seedBaseLayout();(function(){const b=baseGeometry();units[0].x=b.cx-80;units[0].y=b.cy+80;units[1].x=b.cx+170;units[1].y=b.cy+160;units[2].x=b.cx+120;units[2].y=b.cy-120;units[3].x=b.cx-170;units[3].y=b.cy+150})();loadGame();applyResearchBonuses();resetEnemyPatrols();refreshSectorMap();buildButtons();spriteCatalog();updateHUD();updateMissions();updateExpeditionHUD();
-loadSprites().then(function(){startBaseRaid(true);refreshBattleActions();startTutorial(false);requestAnimationFrame(loop)});
+loadSprites().then(function(){
+  if(!restoredSession)startBaseRaid(true);
+  else{
+    gameMode=restoredMode;
+    document.body.classList.toggle("outside-mode",gameMode==="outside");
+    document.getElementById("baseModeBtn").classList.toggle("active",gameMode==="base");
+    document.getElementById("outsideModeBtn").classList.toggle("active",gameMode==="outside");
+    document.getElementById("expeditionPanel").classList.toggle("hidden",gameMode!=="outside");
+    statusEl.textContent="Saved colony restored. Continue your mission.";
+  }
+  refreshBattleActions();startTutorial(false);requestAnimationFrame(loop);
+});
