@@ -102,7 +102,7 @@ const researchData={
   engineering:{
     name:"Fortification Engineering",
     desc:"Reinforces the south gate and speeds colony construction.",
-    effects:["Gate health +60 / level","Construction time -10% / level","Repair losses reduced"],
+    effects:["Gate health +60 / level","Construction time -10% / level","Repair losses reduced","Outer expansion plots unlock at Lv.5"],
     cost:function(lv){return {credits:220+lv*190,iron:45+lv*28}}
   },
   exploration:{
@@ -136,7 +136,7 @@ function applyResearchBonuses(){
 }
 function buyResearch(key){
   const level=researchState[key]||0;
-  if(level>=3)return;
+  if(level>=5)return;
   const cost=researchCost(key);
   if(colony.credits<cost.credits||colony.iron<cost.iron){
     statusEl.textContent="Not enough resources for research.";
@@ -157,15 +157,15 @@ function renderResearchPanel(){
   Object.keys(researchData).forEach(function(key){
     const d=researchData[key],level=researchState[key]||0,cost=researchCost(key);
     const card=document.createElement("div");
-    card.className="research-card"+(level>=3?" maxed":"");
+    card.className="research-card"+(level>=5?" maxed":"");
     card.innerHTML="<h3>"+d.name+"</h3>"+
-      '<div class="research-level">LEVEL '+level+" / 3</div>"+
+      '<div class="research-level">LEVEL '+level+" / 5</div>"+
       '<div class="research-desc">'+d.desc+"</div>"+
       '<div class="research-effects">'+d.effects.map(function(x){return "• "+x}).join("<br>")+"</div>"+
-      '<button class="research-buy" '+(level>=3?"disabled":"")+">"+
-      (level>=3?"MAX LEVEL":"RESEARCH • $"+cost.credits+" + "+cost.iron+" iron")+"</button>";
+      '<button class="research-buy" '+(level>=5?"disabled":"")+">"+
+      (level>=5?"MAX LEVEL":"RESEARCH • $"+cost.credits+" + "+cost.iron+" iron")+"</button>";
     const btn=card.querySelector("button");
-    if(level<3)btn.onclick=function(){buyResearch(key)};
+    if(level<5)btn.onclick=function(){buyResearch(key)};
     grid.appendChild(card);
   });
 }
@@ -180,8 +180,9 @@ function closeResearch(){
   document.getElementById("researchPanel").classList.add("hidden");
   paused=false;
 }
-const researchTopBtn=document.getElementById("researchModeBtn"); if(researchTopBtn)researchTopBtn.style.display="none";
+const researchTopBtn=document.getElementById("researchModeBtn"); if(researchTopBtn)researchTopBtn.style.display="";
 document.getElementById("closeResearchBtn").onclick=closeResearch;
+if(researchTopBtn)researchTopBtn.onclick=openResearch;
 
 function saveGame(){
   try{
@@ -1035,14 +1036,34 @@ function drawProps(){
   drawImageCentered(crate,b.cx+4.0*u,b.cy+2.1*u,u*.85,u*.7);
   drawImageCentered(terminal,b.cx+1.0*u,b.cy+.62*u,u*.6,u*.82);
 }
+
+function lockedExpansionAt(x,y){
+  if(researchState.engineering>=5)return null;
+  const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
+  return getBuildPlots().find(function(p){return (p.id==="plotD"||p.id==="plotE")&&Math.abs(x-p.x)<u*.85&&Math.abs(y-p.y)<u*.75})||null;
+}
+function drawLockedExpansionAreas(){
+  if(researchState.engineering>=5)return;
+  const b=baseGeometry(),u=Math.min(b.w/11.5,b.h/7.6);
+  ctx.save();
+  getBuildPlots().filter(function(p){return p.id==="plotD"||p.id==="plotE"}).forEach(function(p){
+    ctx.fillStyle="rgba(12,17,24,.72)";ctx.strokeStyle="#e2a458";ctx.lineWidth=2;ctx.setLineDash([5,4]);
+    ctx.fillRect(p.x-u*.85,p.y-u*.75,u*1.7,u*1.5);ctx.strokeRect(p.x-u*.85,p.y-u*.75,u*1.7,u*1.5);
+    ctx.fillStyle="#ffd184";ctx.font="bold 10px Arial";ctx.textAlign="center";ctx.fillText("LOCKED",p.x,p.y-6);
+    ctx.font="9px Arial";ctx.fillText("Engineering Lv.5",p.x,p.y+10);
+  });
+  ctx.restore();
+}
+
 function drawBuildings(){
+  drawLockedExpansionAreas();
   const plots=getBuildPlots();
   buildings.slice().sort(function(a,b){return a.y-b.y}).forEach(function(b){
     const index=buildings.indexOf(b),d=buildingData[b.type],plot=plots.find(function(p){return p.id===b.plotId});
     const scale=(plot&&plot.scale?plot.scale:1)*(1+Math.min((b.level-1)*.022,.15));
     const file=buildingSprite(d,b),u=Math.min(baseGeometry().w/12,baseGeometry().h/8);
     const customScale=(typeof b.scale==="number"?b.scale:1);
-    const size=u*1.95*d.size*scale*customScale;
+    const size=u*1.95*d.size*scale*customScale*.72;
     if(b.rotation)drawRotated(file,b.x+GRID/2,b.y+GRID/2,size,size,b.rotation*Math.PI/180);
     else drawImageCentered(file,b.x+GRID/2,b.y+GRID/2,size,size);
     if(isConstructing(b)){
@@ -1083,7 +1104,7 @@ function buildingAtPoint(x,y){
   let best=-1,bestDist=Infinity;
   buildings.forEach(function(b,i){
     const cx=b.x+GRID/2,cy=b.y+GRID/2,d=Math.hypot(x-cx,y-cy);
-    if(d<75&&d<bestDist){best=i;bestDist=d}
+    if(d<54&&d<bestDist){best=i;bestDist=d}
   });
   return best;
 }
@@ -1110,6 +1131,7 @@ function placeOrSelect(x,y){
     statusEl.textContent=buildingData[buildings[hit].type].name+" selected.";
     return;
   }
+  if(lockedExpansionAt(x,y)){statusEl.textContent="Expansion area locked. Research Engineering to Lv.5.";return;}
   const d=buildingData[selectedBuilding];
   if(gameMode==="layout"){
     const bg=baseGeometry();
@@ -1122,6 +1144,7 @@ function placeOrSelect(x,y){
   }
   const p=nearestFreePlot(x,y);
   if(!p){statusEl.textContent="Tap an empty build pad inside the colony.";return}
+  if(lockedExpansionAt(p.x,p.y)){statusEl.textContent="Requires Engineering research Lv.5.";return}
   if(!d)return;
   if(colony.hqLevel<d.unlock){statusEl.textContent="Requires Command Hub Lv."+d.unlock+".";return}
   if(colony.credits<d.cost){statusEl.textContent="Not enough credits.";return}
@@ -1151,6 +1174,7 @@ canvas.addEventListener("pointerdown",function(e){
 canvas.addEventListener("pointermove",function(e){
   if(gameMode!=="layout"||layoutDragIndex==null)return;
   const bg=baseGeometry(),x=Math.max(bg.left+55,Math.min(bg.right-55,e.clientX-layoutDragOffsetX)),y=Math.max(bg.top+55,Math.min(bg.bottom-70,e.clientY-layoutDragOffsetY));
+  if(lockedExpansionAt(x,y)){statusEl.textContent="Expansion area requires Engineering Lv.5.";return;}
   buildings[layoutDragIndex].x=x-GRID/2;buildings[layoutDragIndex].y=y-GRID/2;buildings[layoutDragIndex].plotId=null;
   refreshLayoutOutput();
 });
