@@ -16,8 +16,8 @@
       "sprite": "wall_straight_custom.png",
       "x": 216,
       "y": 92,
-      "nx": 0,
-      "ny": 0,
+      "nx": 0.0,
+      "ny": 0.0,
       "rotation": 0
     },
     {
@@ -25,494 +25,494 @@
       "sprite": "wall_straight_custom.png",
       "x": 216,
       "y": 749,
+      "nx": 0.0,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 305,
+      "y": 92,
+      "nx": 0.06,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 305,
+      "y": 749,
+      "nx": 0.06,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 394,
+      "y": 92,
+      "nx": 0.12,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 394,
+      "y": 749,
+      "nx": 0.12,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 482,
+      "y": 92,
+      "nx": 0.18,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 482,
+      "y": 749,
+      "nx": 0.18,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 571,
+      "y": 92,
+      "nx": 0.24,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 571,
+      "y": 749,
+      "nx": 0.24,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 660,
+      "y": 92,
+      "nx": 0.3,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 660,
+      "y": 749,
+      "nx": 0.3,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 749,
+      "y": 92,
+      "nx": 0.36,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 749,
+      "y": 749,
+      "nx": 0.36,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 838,
+      "y": 92,
+      "nx": 0.42,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 838,
+      "y": 749,
+      "nx": 0.42,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 926,
+      "y": 92,
+      "nx": 0.48,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 926,
+      "y": 749,
+      "nx": 0.48,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1015,
+      "y": 92,
+      "nx": 0.54,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1015,
+      "y": 749,
+      "nx": 0.54,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1104,
+      "y": 92,
+      "nx": 0.6,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1104,
+      "y": 749,
+      "nx": 0.6,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1193,
+      "y": 92,
+      "nx": 0.66,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1193,
+      "y": 749,
+      "nx": 0.66,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1282,
+      "y": 92,
+      "nx": 0.72,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1282,
+      "y": 749,
+      "nx": 0.72,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1370,
+      "y": 92,
+      "nx": 0.78,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1370,
+      "y": 749,
+      "nx": 0.78,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1459,
+      "y": 92,
+      "nx": 0.84,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1459,
+      "y": 749,
+      "nx": 0.84,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1548,
+      "y": 92,
+      "nx": 0.9,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1548,
+      "y": 749,
+      "nx": 0.9,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1637,
+      "y": 92,
+      "nx": 0.96,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1637,
+      "y": 749,
+      "nx": 0.96,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1696,
+      "y": 92,
+      "nx": 1,
+      "ny": 0.0,
+      "rotation": 0
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 1696,
+      "y": 749,
+      "nx": 1,
+      "ny": 0.94,
+      "rotation": 180
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 216,
+      "y": 155,
       "nx": 0,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 305,
-      "y": 92,
-      "nx": 0.06,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 305,
-      "y": 749,
-      "nx": 0.06,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 394,
-      "y": 92,
-      "nx": 0.12,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 394,
-      "y": 749,
-      "nx": 0.12,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 482,
-      "y": 92,
-      "nx": 0.18,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 482,
-      "y": 749,
-      "nx": 0.18,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 571,
-      "y": 92,
-      "nx": 0.24,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 571,
-      "y": 749,
-      "nx": 0.24,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 660,
-      "y": 92,
-      "nx": 0.3,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 660,
-      "y": 749,
-      "nx": 0.3,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 749,
-      "y": 92,
-      "nx": 0.36,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 749,
-      "y": 749,
-      "nx": 0.36,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 838,
-      "y": 92,
-      "nx": 0.42,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 838,
-      "y": 749,
-      "nx": 0.42,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 926,
-      "y": 92,
-      "nx": 0.48,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 926,
-      "y": 749,
-      "nx": 0.48,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1015,
-      "y": 92,
-      "nx": 0.54,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1015,
-      "y": 749,
-      "nx": 0.54,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1104,
-      "y": 92,
-      "nx": 0.6,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1104,
-      "y": 749,
-      "nx": 0.6,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1193,
-      "y": 92,
-      "nx": 0.66,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1193,
-      "y": 749,
-      "nx": 0.66,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1282,
-      "y": 92,
-      "nx": 0.72,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1282,
-      "y": 749,
-      "nx": 0.72,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1370,
-      "y": 92,
-      "nx": 0.78,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1370,
-      "y": 749,
-      "nx": 0.78,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1459,
-      "y": 92,
-      "nx": 0.84,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1459,
-      "y": 749,
-      "nx": 0.84,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1548,
-      "y": 92,
-      "nx": 0.9,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1548,
-      "y": 749,
-      "nx": 0.9,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1637,
-      "y": 92,
-      "nx": 0.96,
-      "ny": 0,
-      "rotation": 0
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1637,
-      "y": 749,
-      "nx": 0.96,
-      "ny": 0.94,
-      "rotation": 180
+      "ny": 0.09,
+      "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
       "x": 1696,
-      "y": 92,
+      "y": 155,
       "nx": 1,
-      "ny": 0,
-      "rotation": 0
+      "ny": 0.09,
+      "rotation": 90
+    },
+    {
+      "type": "wall",
+      "sprite": "wall_straight_custom.png",
+      "x": 216,
+      "y": 218,
+      "nx": 0,
+      "ny": 0.18,
+      "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
       "x": 1696,
-      "y": 749,
+      "y": 218,
       "nx": 1,
-      "ny": 0.94,
-      "rotation": 180
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 243,
-      "y": 130,
-      "nx": 0.018,
-      "ny": 0.055,
+      "ny": 0.18,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 1669,
-      "y": 130,
-      "nx": 0.982,
-      "ny": 0.055,
+      "x": 216,
+      "y": 281,
+      "nx": 0,
+      "ny": 0.27,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 243,
-      "y": 193,
-      "nx": 0.018,
-      "ny": 0.145,
+      "x": 1696,
+      "y": 281,
+      "nx": 1,
+      "ny": 0.27,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 1669,
-      "y": 193,
-      "nx": 0.982,
-      "ny": 0.145,
+      "x": 216,
+      "y": 344,
+      "nx": 0,
+      "ny": 0.36,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 243,
-      "y": 256,
-      "nx": 0.018,
-      "ny": 0.235,
+      "x": 1696,
+      "y": 344,
+      "nx": 1,
+      "ny": 0.36,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 1669,
-      "y": 256,
-      "nx": 0.982,
-      "ny": 0.235,
+      "x": 216,
+      "y": 407,
+      "nx": 0,
+      "ny": 0.45,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 243,
-      "y": 319,
-      "nx": 0.018,
-      "ny": 0.325,
+      "x": 1696,
+      "y": 407,
+      "nx": 1,
+      "ny": 0.45,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 1669,
-      "y": 319,
-      "nx": 0.982,
-      "ny": 0.325,
+      "x": 216,
+      "y": 469,
+      "nx": 0,
+      "ny": 0.54,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 243,
-      "y": 382,
-      "nx": 0.018,
-      "ny": 0.415,
+      "x": 1696,
+      "y": 469,
+      "nx": 1,
+      "ny": 0.54,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 1669,
-      "y": 382,
-      "nx": 0.982,
-      "ny": 0.415,
+      "x": 216,
+      "y": 532,
+      "nx": 0,
+      "ny": 0.63,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 243,
-      "y": 445,
-      "nx": 0.018,
-      "ny": 0.505,
+      "x": 1696,
+      "y": 532,
+      "nx": 1,
+      "ny": 0.63,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 1669,
-      "y": 445,
-      "nx": 0.982,
-      "ny": 0.505,
+      "x": 216,
+      "y": 595,
+      "nx": 0,
+      "ny": 0.72,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 243,
-      "y": 508,
-      "nx": 0.018,
-      "ny": 0.595,
+      "x": 1696,
+      "y": 595,
+      "nx": 1,
+      "ny": 0.72,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 1669,
-      "y": 508,
-      "nx": 0.982,
-      "ny": 0.595,
+      "x": 216,
+      "y": 658,
+      "nx": 0,
+      "ny": 0.81,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 243,
-      "y": 571,
-      "nx": 0.018,
-      "ny": 0.685,
+      "x": 1696,
+      "y": 658,
+      "nx": 1,
+      "ny": 0.81,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 1669,
-      "y": 571,
-      "nx": 0.982,
-      "ny": 0.685,
+      "x": 216,
+      "y": 721,
+      "nx": 0,
+      "ny": 0.9,
       "rotation": 90
     },
     {
       "type": "wall",
       "sprite": "wall_straight_custom.png",
-      "x": 243,
-      "y": 634,
-      "nx": 0.018,
-      "ny": 0.775,
-      "rotation": 90
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1669,
-      "y": 634,
-      "nx": 0.982,
-      "ny": 0.775,
-      "rotation": 90
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 243,
-      "y": 697,
-      "nx": 0.018,
-      "ny": 0.865,
-      "rotation": 90
-    },
-    {
-      "type": "wall",
-      "sprite": "wall_straight_custom.png",
-      "x": 1669,
-      "y": 697,
-      "nx": 0.982,
-      "ny": 0.865,
+      "x": 1696,
+      "y": 721,
+      "nx": 1,
+      "ny": 0.9,
       "rotation": 90
     }
   ],
